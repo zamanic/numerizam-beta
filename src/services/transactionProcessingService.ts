@@ -25,7 +25,16 @@ export class TransactionProcessingService {
     try {
       console.log('Processing query:', query);
       
-      // Step 1: Send query to LangGraph API for processing
+      // Step 1: Validate query
+      const validation = this.validateQuery(query);
+      if (!validation.isValid) {
+        return {
+          success: false,
+          error: `Query validation failed: ${validation.errors.join(', ')}`
+        };
+      }
+
+      // Step 2: Send query to LangGraph API for processing
       const langGraphResponse = await langGraphAPI.processQuery({
         query,
         company_id: 1 // For now using default company ID, could be derived from companyName
@@ -41,12 +50,19 @@ export class TransactionProcessingService {
         };
       }
 
-      // Step 2: Parse the response to extract transaction data
-      // Handle both new and legacy response formats
-      const responseData = langGraphResponse.parsed_data || langGraphResponse;
-      console.log('Response data for parsing:', responseData);
-      
-      const transactionData = await this.parseLangGraphResponse(responseData, companyName, country, region);
+      // Check if this is a multiple transaction response
+      if (langGraphResponse.transactions && Array.isArray(langGraphResponse.transactions)) {
+        // Handle multiple transactions using the existing response
+        return this.processMultipleTransactionsFromResponse(langGraphResponse, userId, companyName, country, region);
+      }
+
+      // Handle single transaction
+      const transactionData = await this.parseLangGraphResponse(
+        langGraphResponse, 
+        companyName, 
+        country, 
+        region
+      );
       
       console.log('Parsed transaction data:', transactionData);
       
@@ -58,25 +74,39 @@ export class TransactionProcessingService {
         };
       }
 
-      // Step 3: Validate transaction data
-      const validation = supabaseAccountingService.validateTransactionData(transactionData);
+      // Step 4: Validate transaction data
+      const validation2 = supabaseAccountingService.validateTransactionData(transactionData);
       
-      console.log('Validation result:', validation);
+      console.log('Validation result:', validation2);
       
-      if (!validation.isValid) {
-        console.log('Validation failed:', validation.errors);
+      if (!validation2.isValid) {
+        console.log('Validation failed:', validation2.errors);
         return {
           success: false,
-          error: `Validation failed: ${validation.errors.join(', ')}`,
+          error: `Validation failed: ${validation2.errors.join(', ')}`,
           data: {
             transactions: [transactionData],
-            validation_errors: validation.errors
+            validation_errors: validation2.errors
           }
         };
       }
 
-      // Step 4: Save to Supabase (use userId if provided, otherwise use a default)
-      const saveResult = await supabaseAccountingService.saveTransactionData(userId || 'default-user', transactionData);
+      // Step 5: Save to Supabase (or simulate for demo mode)
+      let saveResult;
+      
+      // Check if this is demo mode
+      if (userId === 'demo-user') {
+        // For demo mode, simulate a successful save without actually saving to database
+        console.log('Demo mode: Simulating successful save');
+        saveResult = {
+          success: true,
+          error: null,
+          entryNumbers: [999, 1000] // Mock entry numbers for demo
+        };
+      } else {
+        // For real users, save to database
+        saveResult = await supabaseAccountingService.saveTransactionData(userId || 'default-user', transactionData);
+      }
       
       console.log('Save result:', saveResult);
       
@@ -106,9 +136,112 @@ export class TransactionProcessingService {
   }
 
   /**
-   * Process multiple transactions from a single query
+   * Process multiple transactions from an existing LangGraph response
    */
-  async processMultipleTransactions(userId: string, query: string): Promise<{
+  async processMultipleTransactionsFromResponse(
+    langGraphResponse: any,
+    userId: string, 
+    companyName?: string, 
+    country?: string, 
+    region?: string
+  ): Promise<{
+    success: boolean;
+    data?: QueryResponse;
+    error?: string;
+    entryNumbers?: number[];
+  }> {
+    try {
+      // Parse multiple transactions from the existing response
+      const responseData = langGraphResponse.parsed_data || langGraphResponse;
+      const transactions = await this.parseMultipleTransactions(responseData);
+      
+      if (!transactions || transactions.length === 0) {
+        return {
+          success: false,
+          error: 'No valid transactions found in the query'
+        };
+      }
+
+      const allEntryNumbers: number[] = [];
+      const validationErrors: string[] = [];
+      const processedTransactions: TransactionData[] = [];
+
+      // Process each transaction
+      for (let i = 0; i < transactions.length; i++) {
+        const transaction = transactions[i];
+        
+        // Update transaction with provided company info if available
+        if (companyName) transaction.company_data.company_name = companyName;
+        if (country) transaction.territory_data.country = country;
+        if (region) transaction.territory_data.region = region;
+        
+        // Validate each transaction
+        const validation = supabaseAccountingService.validateTransactionData(transaction);
+        
+        if (!validation.isValid) {
+          validationErrors.push(`Transaction ${i + 1}: ${validation.errors.join(', ')}`);
+          continue;
+        }
+
+        // Save valid transactions (or simulate for demo mode)
+        let saveResult;
+        
+        if (userId === 'demo-user') {
+          // For demo mode, TEMPORARILY save to database for testing
+          console.log(`Demo mode: ACTUALLY saving to database for transaction ${i + 1}`);
+          saveResult = await supabaseAccountingService.saveTransactionData('demo-user', transaction);
+        } else {
+          // For real users, save to database
+          saveResult = await supabaseAccountingService.saveTransactionData(userId, transaction);
+        }
+        
+        if (saveResult.success && saveResult.entryNumbers) {
+          allEntryNumbers.push(...saveResult.entryNumbers);
+          processedTransactions.push(transaction);
+        } else {
+          validationErrors.push(`Transaction ${i + 1}: ${saveResult.error || 'Failed to save'}`);
+        }
+      }
+
+      if (processedTransactions.length === 0) {
+        return {
+          success: false,
+          error: 'No transactions could be processed',
+          data: {
+            transactions: transactions,
+            validation_errors: validationErrors
+          }
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          transactions: processedTransactions,
+          validation_errors: validationErrors.length > 0 ? validationErrors : undefined
+        },
+        entryNumbers: allEntryNumbers
+      };
+
+    } catch (error) {
+      console.error('Error processing multiple transactions from response:', error);
+      return {
+        success: false,
+        error: (error as Error).message
+      };
+    }
+  }
+
+  /**
+   * Process multiple transactions from a single query (DEPRECATED - use processMultipleTransactionsFromResponse)
+   */
+  async processMultipleTransactions(
+    userId: string, 
+    query: string, 
+    companyName?: string, 
+    country?: string, 
+    region?: string
+  ): Promise<{
     success: boolean;
     data?: QueryResponse;
     error?: string;
@@ -148,6 +281,11 @@ export class TransactionProcessingService {
       for (let i = 0; i < transactions.length; i++) {
         const transaction = transactions[i];
         
+        // Update transaction with provided company info if available
+        if (companyName) transaction.company_data.company_name = companyName;
+        if (country) transaction.territory_data.country = country;
+        if (region) transaction.territory_data.region = region;
+        
         // Validate each transaction
         const validation = supabaseAccountingService.validateTransactionData(transaction);
         
@@ -156,8 +294,17 @@ export class TransactionProcessingService {
           continue;
         }
 
-        // Save valid transactions
-        const saveResult = await supabaseAccountingService.saveTransactionData(userId, transaction);
+        // Save valid transactions (or simulate for demo mode)
+        let saveResult;
+        
+        if (userId === 'demo-user') {
+          // For demo mode, TEMPORARILY save to database for testing
+          console.log(`Demo mode: ACTUALLY saving to database for transaction ${i + 1}`);
+          saveResult = await supabaseAccountingService.saveTransactionData('demo-user', transaction);
+        } else {
+          // For real users, save to database
+          saveResult = await supabaseAccountingService.saveTransactionData(userId, transaction);
+        }
         
         if (saveResult.success && saveResult.entryNumbers) {
           allEntryNumbers.push(...saveResult.entryNumbers);
@@ -347,6 +494,24 @@ export class TransactionProcessingService {
    */
   private async parseMultipleTransactions(response: any): Promise<TransactionData[] | null> {
     try {
+      // Handle new LangGraph format for multiple transactions
+      if (response && response.success && response.transactions && Array.isArray(response.transactions)) {
+        const transactions = [];
+        for (const transaction of response.transactions) {
+          // Each transaction has: transaction_number, journal_id, debit_entry_id, credit_entry_id, amount, details
+          const parsed = await this.parseLangGraphResponse({
+            success: true,
+            journal_id: transaction.journal_id,
+            debit_entry_id: transaction.debit_entry_id,
+            credit_entry_id: transaction.credit_entry_id,
+            amount: transaction.amount,
+            message: transaction.details
+          });
+          if (parsed) transactions.push(parsed);
+        }
+        return transactions;
+      }
+
       // Handle new LangGraph format (single transaction)
       if (response && response.success && response.journal_id) {
         const singleTransaction = await this.parseLangGraphResponse(response);

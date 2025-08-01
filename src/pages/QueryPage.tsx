@@ -125,32 +125,43 @@ const QueryPage = () => {
     setReportData(null)
 
     try {
-      // For demo mode, use mock data instead of actual API call
+      // For demo mode, use the real API but with default values
       if (isDemoMode) {
-        // Simulate processing delay
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        console.log('Demo mode: Processing query:', query)
+        // Use the LangGraph API directly for demo mode
+        const result = await transactionProcessingService.processQuery(
+          'demo-user', // Demo user ID
+          query,
+          'Demo Company', // Demo company name
+          'Demo Country', // Demo country
+          'Demo Region' // Demo region
+        )
         
-        // Create a mock journal entry based on the query
-        const mockJournalEntry: JournalEntry = {
-          id: `demo-j${transactions.length + 1}`,
-          date: new Date(),
-          description: `Demo Transaction: ${query}`,
-          entries: [
-            {
-              account: '1000 - Cash',
-              debit: 1000,
-              credit: undefined,
-            },
-            {
-              account: '4000 - Sales Revenue',
-              debit: undefined,
-              credit: 1000,
-            }
-          ]
+        console.log('Demo mode: LangGraph result:', result)
+        
+        if (result.success && result.data?.journal_entry) {
+          console.log('Demo mode: Creating journal entry from result')
+          const journalEntry: JournalEntry = {
+            id: `demo-je${Date.now()}`,
+            date: new Date(result.data.journal_entry.date),
+            description: result.data.journal_entry.description,
+            entries: result.data.journal_entry.entries.map((entry: any) => ({
+              account: entry.account,
+              debit: entry.type === 'Debit' ? entry.amount : undefined,
+              credit: entry.type === 'Credit' ? entry.amount : undefined,
+            }))
+          }
+          
+          console.log('Demo mode: Setting journal entry:', journalEntry)
+          setCurrentJournalEntry(journalEntry)
+          setShowConfirmDialog(true)
+        } else if (result.error) {
+          console.log('Demo mode: Error:', result.error)
+          setError(result.error)
+        } else {
+          console.log('Demo mode: No valid transactions found')
+          setError('No valid transactions found in the response')
         }
-        
-        setCurrentJournalEntry(mockJournalEntry)
-        setShowConfirmDialog(true)
         return
       }
 
