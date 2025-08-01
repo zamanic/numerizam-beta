@@ -386,16 +386,19 @@ export class SupabaseAccountingService {
    */
   async saveTransactionData(userId: string, transactionData: TransactionData): Promise<{ success: boolean; error: string | null; entryNumbers?: number[] }> {
     try {
-      // Get user information
-      const { data: user, error: userError } = await supabase
-        .from('numerizamauth')
-        .select('*')
-        .eq('id', userId)
-        .eq('is_approved', true)
-        .single();
+      // Skip user validation for demo mode
+      if (userId !== 'demo-user') {
+        // Get user information for real users
+        const { data: user, error: userError } = await supabase
+          .from('numerizamauth')
+          .select('*')
+          .eq('id', userId)
+          .eq('is_approved', true)
+          .single();
 
-      if (userError || !user) {
-        return { success: false, error: 'User not found or not approved' };
+        if (userError || !user) {
+          return { success: false, error: 'User not found or not approved' };
+        }
       }
 
       // 1. Create or get company

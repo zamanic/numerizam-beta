@@ -31,17 +31,25 @@ def process_natural_language_query(request):
     }
     """
     try:
+        print(f"DEBUG: Raw request data: {request.data}")
+        print(f"DEBUG: Request content type: {request.content_type}")
+        
         data = request.data
         query = data.get('query')
         company_id = data.get('company_id')
         
+        print(f"DEBUG: Extracted query: {query}")
+        print(f"DEBUG: Extracted company_id: {company_id}")
+        
         if not query:
+            print("DEBUG: Query is missing")
             return Response(
                 {'error': 'Query is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         if not company_id:
+            print("DEBUG: Company ID is missing")
             return Response(
                 {'error': 'Company ID is required'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -49,20 +57,27 @@ def process_natural_language_query(request):
         
         # Verify company exists
         try:
-            Company.objects.get(company_id=company_id)
+            company = Company.objects.get(company_id=company_id)
+            print(f"DEBUG: Found company: {company.company_name}")
         except Company.DoesNotExist:
+            print(f"DEBUG: Company with ID {company_id} not found")
             return Response(
                 {'error': f'Company with ID {company_id} not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
         
         # Process query with LangGraph agent
+        print("DEBUG: Getting LangGraph agent...")
         agent = get_agent()
+        print("DEBUG: Processing query with agent...")
         result = agent.process_query(query, company_id)
+        print(f"DEBUG: Agent result: {result}")
         
         if result.get('success'):
+            print("DEBUG: Agent returned success, returning 201")
             return Response(result, status=status.HTTP_201_CREATED)
         else:
+            print(f"DEBUG: Agent returned failure, returning 400. Result: {result}")
             return Response(result, status=status.HTTP_400_BAD_REQUEST)
             
     except Exception as e:

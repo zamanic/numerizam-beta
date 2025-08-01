@@ -859,6 +859,13 @@ export const COMPLETE_CHART_OF_ACCOUNTS: ChartOfAccountsEntry[] = [
     report: "Balance Sheet",
   },
   {
+    account_key: 3007,
+    account: "Owner's Draw",
+    class: "Owner's Equity",
+    subclass: "Owner's Equity",
+    report: "Balance Sheet",
+  },
+  {
     account_key: 3005,
     account: "Current Year Profit/Loss",
     class: "Owner's Equity",
