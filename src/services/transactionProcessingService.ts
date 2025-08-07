@@ -51,9 +51,9 @@ export class TransactionProcessingService {
       }
 
       // Check if this is a multiple transaction response
-      if (langGraphResponse.transactions && Array.isArray(langGraphResponse.transactions)) {
+      if (langGraphResponse.parsed_data?.transactions && Array.isArray(langGraphResponse.parsed_data.transactions)) {
         // Handle multiple transactions using the existing response
-        return this.processMultipleTransactionsFromResponse(langGraphResponse, userId, companyName, country, region);
+        return this.processMultipleTransactionsFromResponse(langGraphResponse, userId || 'default-user', companyName, country, region);
       }
 
       // Handle single transaction
@@ -101,7 +101,7 @@ export class TransactionProcessingService {
         saveResult = {
           success: true,
           error: null,
-          entryNumbers: [999, 1000] // Mock entry numbers for demo
+          entryNumbers: [999, 999] // Mock entry numbers for demo - using 999 as per user's query
         };
       } else {
         // For real users, save to database

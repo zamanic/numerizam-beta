@@ -12,7 +12,6 @@ import {
   Button, 
   Chip, 
   Alert,
-  CircularProgress,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -26,6 +25,7 @@ import { motion } from 'framer-motion'
 
 import { AuthContext } from '../context/AuthContext'
 import { numerizamAuthService, NumerizamUser } from '../services/numerizamAuthService'
+import LoadingSpinner from '../components/LoadingSpinner'
 
 const AdminDashboard = () => {
   const { user } = useContext(AuthContext)
@@ -163,9 +163,11 @@ const AdminDashboard = () => {
         </Typography>
 
         {isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
-          </Box>
+          <LoadingSpinner 
+            type="gradient" 
+            size="large" 
+            message="Loading pending registrations..." 
+          />
         ) : pendingUsers.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 4 }}>
             <Typography color="textSecondary">

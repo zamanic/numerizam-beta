@@ -67,7 +67,7 @@ class NumerizamAgent:
     
     def __init__(self):
         self.llm = ChatOpenAI(
-            model="gpt-4o-mini",
+            model="gpt-4.1-mini",
             temperature=0.1,
             api_key=settings.OPENAI_API_KEY
         )
@@ -105,7 +105,16 @@ class NumerizamAgent:
                 return self._parse_single_transaction(state)
                 
         except Exception as e:
-            state.errors.append(f"Parser node error: {str(e)}")
+            error_message = str(e)
+            # Check for OpenAI quota errors and provide user-friendly message
+            if "429" in error_message and "quota" in error_message.lower():
+                state.errors.append("AI service quota exceeded. Please try again later or contact support.")
+            elif "insufficient_quota" in error_message:
+                state.errors.append("AI service quota exceeded. Please try again later or contact support.")
+            elif "openai" in error_message.lower() and "api" in error_message.lower():
+                state.errors.append("AI service temporarily unavailable. Please try again later.")
+            else:
+                state.errors.append(f"Parser node error: {error_message}")
         
         return state
     
@@ -115,10 +124,12 @@ class NumerizamAgent:
         patterns = [
             r'\d+\.\s+',  # Numbered lists like "1. ", "2. "
             r'first.*second',  # Sequential indicators
-            r'then.*and',  # Sequential connectors
+            r'then.*and.*then',  # Sequential connectors with multiple steps
             r'multiple.*transaction',  # Explicit mentions
             r'several.*transaction',
             r'following.*transaction',
+            r'and then.*and then',  # Multiple sequential actions
+            r'\d+\s+transaction',  # "5 transactions", "3 transactions"
         ]
         
         query_lower = query.lower()
@@ -126,11 +137,23 @@ class NumerizamAgent:
             if re.search(pattern, query_lower):
                 return True
         
-        # Count potential transaction verbs
-        transaction_verbs = ['invested', 'bought', 'received', 'paid', 'withdrew', 'purchased', 'sold', 'earned']
-        verb_count = sum(1 for verb in transaction_verbs if verb in query_lower)
+        # Count actual transaction actions (more specific)
+        # Look for multiple distinct transaction actions, not just verbs
+        transaction_actions = [
+            r'invest.*\d+',
+            r'buy.*\d+', 
+            r'receive.*\d+',
+            r'pay.*\d+',
+            r'withdraw.*\d+',
+            r'purchase.*\d+',
+            r'sell.*\d+',
+            r'earn.*\d+'
+        ]
         
-        return verb_count > 1
+        action_count = sum(1 for action in transaction_actions if re.search(action, query_lower))
+        
+        # Only consider it multiple transactions if there are clear multiple actions
+        return action_count > 1
     
     def _parse_single_transaction(self, state: AgentState) -> AgentState:
         """Parse a single transaction query."""
@@ -167,7 +190,20 @@ class NumerizamAgent:
             HumanMessage(content=user_prompt)
         ]
         
-        response = self.llm.invoke(messages)
+        try:
+            response = self.llm.invoke(messages)
+        except Exception as e:
+            error_message = str(e)
+            # Check for OpenAI quota errors and provide user-friendly message
+            if "429" in error_message and "quota" in error_message.lower():
+                state.errors.append("AI service quota exceeded. Please try again later or contact support.")
+            elif "insufficient_quota" in error_message:
+                state.errors.append("AI service quota exceeded. Please try again later or contact support.")
+            elif "openai" in error_message.lower() and "api" in error_message.lower():
+                state.errors.append("AI service temporarily unavailable. Please try again later.")
+            else:
+                state.errors.append(f"AI service error: {error_message}")
+            return state
         
         # Debug logging
         print(f"DEBUG: LLM Response type: {type(response.content)}")
@@ -217,27 +253,7 @@ class NumerizamAgent:
         - "investment" -> "Owner's Capital"
         
         Return the information as a JSON object with a "transactions" array containing each transaction object.
-        Example:
-        {
-            "transactions": [
-                {
-                    "date": "2025-01-15",
-                    "debit_account": "Cash",
-                    "credit_account": "Owner's Capital",
-                    "amount": 5000,
-                    "details": "Initial investment",
-                    "reference_number": null
-                },
-                {
-                    "date": "2025-01-15",
-                    "debit_account": "Office Supplies Expense",
-                    "credit_account": "Accounts Payable",
-                    "amount": 500,
-                    "details": "Office supplies purchased on account",
-                    "reference_number": null
-                }
-            ]
-        }
+        Use the exact amounts and details from the query - do not use placeholder or example values.
         """
         
         user_prompt = f"Extract all transaction information from: {state.query}"
@@ -247,7 +263,20 @@ class NumerizamAgent:
             HumanMessage(content=user_prompt)
         ]
         
-        response = self.llm.invoke(messages)
+        try:
+            response = self.llm.invoke(messages)
+        except Exception as e:
+            error_message = str(e)
+            # Check for OpenAI quota errors and provide user-friendly message
+            if "429" in error_message and "quota" in error_message.lower():
+                state.errors.append("AI service quota exceeded. Please try again later or contact support.")
+            elif "insufficient_quota" in error_message:
+                state.errors.append("AI service quota exceeded. Please try again later or contact support.")
+            elif "openai" in error_message.lower() and "api" in error_message.lower():
+                state.errors.append("AI service temporarily unavailable. Please try again later.")
+            else:
+                state.errors.append(f"AI service error: {error_message}")
+            return state
         
         # Debug logging
         print(f"DEBUG: Multiple transactions LLM Response type: {type(response.content)}")

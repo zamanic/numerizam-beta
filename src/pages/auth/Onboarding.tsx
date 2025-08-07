@@ -1,10 +1,13 @@
 import { useState, useContext, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Container, Box, Typography, Button, Paper, FormControl, InputLabel, Select, MenuItem, CircularProgress, Alert } from '@mui/material'
+import { Container, Box, Typography, Button, Paper, FormControl, InputLabel, Select, MenuItem, Alert } from '@mui/material'
 import { motion } from 'framer-motion'
 
 // Context
 import { AuthContext, UserRole } from '../../context/AuthContext'
+
+// Components
+import LoadingSpinner from '../../components/LoadingSpinner'
 
 const currencies = [
   { code: 'USD', name: 'US Dollar' },
@@ -47,7 +50,7 @@ const Onboarding = () => {
   if (isLoading) {
     return (
       <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
+        <LoadingSpinner type="gradient" size="large" />
       </Container>
     )
   }
@@ -126,7 +129,7 @@ const Onboarding = () => {
               disabled={isLoading}
               sx={{ py: 1.5, px: 4, borderRadius: 2 }}
             >
-              {isLoading ? <CircularProgress size={24} /> : 'Complete Setup'}
+              {isLoading ? <LoadingSpinner type="circular" size="small" /> : 'Complete Setup'}
             </Button>
           </Box>
         </Paper>

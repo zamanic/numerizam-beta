@@ -29,6 +29,10 @@ import Unauthorized from './pages/Unauthorized'
 // Context
 import { ThemeContext } from './context/ThemeContext'
 import { AuthProvider } from './context/AuthContext'
+import { RouteLoadingProvider } from './context/RouteLoadingContext'
+
+// Components
+import RouteLoadingOverlay from './components/RouteLoadingOverlay'
 
 function App() {
   const [darkMode, setDarkMode] = useState(false)
@@ -105,8 +109,10 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <AuthProvider>
-          <AnimatePresence mode="wait">
-            <Routes location={location} key={location.pathname}>
+          <RouteLoadingProvider>
+            <RouteLoadingOverlay />
+            <AnimatePresence mode="wait">
+              <Routes location={location} key={location.pathname}>
               {/* Public routes */}
               <Route path="/" element={<PublicDashboard />} />
               <Route path="/demo" element={<QueryPage />} />
@@ -180,8 +186,9 @@ function App() {
                   </ProtectedRoute>
                 } />
               </Route>
-            </Routes>
-          </AnimatePresence>
+              </Routes>
+            </AnimatePresence>
+          </RouteLoadingProvider>
         </AuthProvider>
       </ThemeProvider>
     </ThemeContext.Provider>

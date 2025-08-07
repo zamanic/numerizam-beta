@@ -1,29 +1,51 @@
-import { useState, useContext } from 'react'
+import React, { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import { Container, Box, Typography, TextField, Button, Paper, Link, IconButton, InputAdornment, CircularProgress, Alert, Stepper, Step, StepLabel } from '@mui/material'
-import { Visibility, VisibilityOff, Brightness4, Brightness7, ArrowBack } from '@mui/icons-material'
+import {
+  Container,
+  Paper,
+  TextField,
+  Button,
+  Typography,
+  Box,
+  Alert,
+  Link,
+  IconButton,
+  InputAdornment,
+  Stepper,
+  Step,
+  StepLabel,
+} from '@mui/material'
+import {
+  Visibility,
+  VisibilityOff,
+  ArrowBack,
+  Brightness4,
+  Brightness7,
+} from '@mui/icons-material'
 import { motion } from 'framer-motion'
-
-// Context
-import { ThemeContext } from '../../context/ThemeContext'
-import { supabase } from '../../services/supabase'
+import { numerizamAuthService } from '../../services/numerizamAuthService'
+import { useTheme } from '../../context/ThemeContext'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import ApprovalRequestForm from '../../components/ApprovalRequestForm'
 
 const Signup = () => {
-  const { darkMode, toggleTheme } = useContext(ThemeContext)
   const navigate = useNavigate()
+  const { darkMode, toggleTheme } = useTheme()
   
   const [activeStep, setActiveStep] = useState(0)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [name, setName] = useState('')
-  const [companyName, setCompanyName] = useState('')
   const [country, setCountry] = useState('')
   const [region, setRegion] = useState('')
+  const [companyName, setCompanyName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [showApprovalForm, setShowApprovalForm] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
 
   const steps = ['Account Details', 'Personal Information', 'Company Information']
 
@@ -71,37 +93,36 @@ const Signup = () => {
 
     setError('')
     setIsLoading(true)
-    
+
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await numerizamAuthService.register({
         email,
         password,
-        options: {
-          data: {
-            full_name: name,
-            company_name: companyName,
-            country,
-            region
-          }
-        }
+        name,
+        companyName,
+        country,
+        region,
       })
 
       if (error) {
-        setError(error.message)
-      } else if (data.user) {
+        setError(error)
+      } else {
         setSuccess(true)
-        // Show success message and redirect after a delay
-        setTimeout(() => {
-          navigate('/login', { 
-            state: { 
-              message: 'Account created successfully! Please check your email to confirm your account before signing in.' 
-            }
-          })
-        }, 3000)
+        if (data?.user?.id) {
+          setUserId(data.user.id)
+          // Show approval form instead of redirecting immediately
+          setTimeout(() => {
+            setShowApprovalForm(true)
+          }, 2000)
+        } else {
+          // Fallback: redirect to login after 3 seconds
+          setTimeout(() => {
+            navigate('/login')
+          }, 3000)
+        }
       }
-    } catch (err) {
-      console.error('Signup error:', err)
-      setError('Error creating account. Please try again.')
+    } catch (error) {
+      setError('An unexpected error occurred. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -148,14 +169,38 @@ const Signup = () => {
             </Alert>
           )}
 
-          {success && (
+          {success && !showApprovalForm && (
             <Alert severity="success" sx={{ width: '100%', mb: 2 }}>
-              Account created successfully! Please check your email to confirm your account. You will be redirected to the login page shortly.
+              Account created successfully! Please check your email to confirm your account. 
+              {userId ? ' Next, you can request approval to become an accountant.' : ' You will be redirected to the login page shortly.'}
             </Alert>
           )}
 
           <Box sx={{ width: '100%' }}>
-            {activeStep === 0 ? (
+            {showApprovalForm && userId ? (
+              <ApprovalRequestForm 
+                userId={userId}
+                userEmail={email}
+                userName={name}
+                companyName={companyName}
+                onSuccess={() => {
+                  setTimeout(() => {
+                    navigate('/login', {
+                      state: {
+                        message: 'Approval request submitted successfully! Please wait for admin approval before signing in.'
+                      }
+                    })
+                  }, 2000)
+                }}
+                onSkip={() => {
+                  navigate('/login', {
+                    state: {
+                      message: 'Account created successfully! You can request approval later from your profile.'
+                    }
+                  })
+                }}
+              />
+            ) : activeStep === 0 ? (
               // Step 1: Account Details
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
@@ -279,32 +324,34 @@ const Signup = () => {
               </motion.div>
             )}
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-              {activeStep > 0 ? (
-                <Button onClick={handleBack} startIcon={<ArrowBack />}>
-                  Back
-                </Button>
-              ) : (
-                <Link component={RouterLink} to="/login" variant="body2">
-                  Already have an account? Sign in
-                </Link>
-              )}
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleNext}
-                disabled={isLoading}
-                sx={{ py: 1, px: 3, borderRadius: 2 }}
-              >
-                {isLoading ? (
-                  <CircularProgress size={24} />
-                ) : activeStep === steps.length - 1 ? (
-                  'Create Account'
+            {!showApprovalForm && (
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+                {activeStep > 0 ? (
+                  <Button onClick={handleBack} startIcon={<ArrowBack />}>
+                    Back
+                  </Button>
                 ) : (
-                  'Next'
+                  <Link component={RouterLink} to="/login" variant="body2">
+                    Already have an account? Sign in
+                  </Link>
                 )}
-              </Button>
-            </Box>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleNext}
+                  disabled={isLoading}
+                  sx={{ py: 1, px: 3, borderRadius: 2 }}
+                >
+                  {isLoading ? (
+                    <LoadingSpinner type="circular" size="small" />
+                  ) : activeStep === steps.length - 1 ? (
+                    'Create Account'
+                  ) : (
+                    'Next'
+                  )}
+                </Button>
+              </Box>
+            )}
           </Box>
         </Paper>
       </motion.div>

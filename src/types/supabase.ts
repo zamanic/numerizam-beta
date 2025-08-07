@@ -17,7 +17,7 @@ export interface Database {
           company_name: string;
           country: string;
           region: string;
-          role: "Accountant" | "Admin";
+          role: "Accountant" | "Auditor" | "Admin";
           is_approved: boolean;
           created_at: string;
           approved_at: string | null;
@@ -30,7 +30,7 @@ export interface Database {
           company_name: string;
           country: string;
           region: string;
-          role?: "Accountant" | "Admin";
+          role?: "Accountant" | "Auditor" | "Admin";
           is_approved?: boolean;
           created_at?: string;
           approved_at?: string | null;
@@ -43,7 +43,7 @@ export interface Database {
           company_name?: string;
           country?: string;
           region?: string;
-          role?: "Accountant" | "Admin";
+          role?: "Accountant" | "Auditor" | "Admin";
           is_approved?: boolean;
           created_at?: string;
           approved_at?: string | null;
@@ -172,6 +172,91 @@ export interface Database {
           territory_key?: number;
           country?: string;
           region?: string;
+        };
+      };
+      approval_requests: {
+        Row: {
+          id: string;
+          user_id: string;
+          user_email: string;
+          user_name: string;
+          company_name: string;
+          requested_role: "Accountant" | "Auditor" | "Admin";
+          business_justification: string;
+          experience: string;
+          additional_info: string | null;
+          status: "pending" | "approved" | "rejected";
+          admin_notes: string | null;
+          created_at: string;
+          updated_at: string;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          user_email: string;
+          user_name: string;
+          company_name: string;
+          requested_role: "Accountant" | "Auditor" | "Admin";
+          business_justification: string;
+          experience: string;
+          additional_info?: string | null;
+          status?: "pending" | "approved" | "rejected";
+          admin_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          user_email?: string;
+          user_name?: string;
+          company_name?: string;
+          requested_role?: "Accountant" | "Auditor" | "Admin";
+          business_justification?: string;
+          experience?: string;
+          additional_info?: string | null;
+          status?: "pending" | "approved" | "rejected";
+          admin_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+        };
+      };
+      approval_notifications: {
+        Row: {
+          id: string;
+          admin_email: string;
+          request_id: string;
+          user_name: string;
+          user_email: string;
+          requested_role: string;
+          is_read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          admin_email: string;
+          request_id: string;
+          user_name: string;
+          user_email: string;
+          requested_role: string;
+          is_read?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          admin_email?: string;
+          request_id?: string;
+          user_name?: string;
+          user_email?: string;
+          requested_role?: string;
+          is_read?: boolean;
+          created_at?: string;
         };
       };
     };

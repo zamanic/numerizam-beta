@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Dialog, DialogContent, TextField, List, ListItem, ListItemIcon, ListItemText, Typography, Box } from '@mui/material'
 import { Dashboard, QueryStats, AdminPanelSettings, Search, Receipt, TrendingUp, AccountBalance, DocumentScanner, Person } from '@mui/icons-material'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useRouteTransition } from '../hooks/useRouteTransition'
 
 type CommandItem = {
   id: string
@@ -23,6 +24,7 @@ const CommandPalette = ({ open, onClose }: CommandPaletteProps) => {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
+  const { navigateWithLoading } = useRouteTransition()
 
   // Reset search and selection when opened
   useEffect(() => {
@@ -43,7 +45,7 @@ const CommandPalette = ({ open, onClose }: CommandPaletteProps) => {
       description: 'Go to main dashboard',
       icon: <Dashboard />,
       action: () => {
-        navigate('/app')
+        navigateWithLoading('/app', 'Loading Dashboard...')
         onClose()
       },
       category: 'navigation',
@@ -54,7 +56,7 @@ const CommandPalette = ({ open, onClose }: CommandPaletteProps) => {
       description: 'Ask questions about your finances',
       icon: <QueryStats />,
       action: () => {
-        navigate('/app/query')
+        navigateWithLoading('/app/query', 'Loading AI Query...')
         onClose()
       },
       category: 'navigation',
@@ -65,7 +67,7 @@ const CommandPalette = ({ open, onClose }: CommandPaletteProps) => {
       description: 'Upload and process receipts and invoices',
       icon: <DocumentScanner />,
       action: () => {
-        navigate('/app/ocr')
+        navigateWithLoading('/app/ocr', 'Loading OCR Upload...')
         onClose()
       },
       category: 'navigation',
@@ -76,7 +78,7 @@ const CommandPalette = ({ open, onClose }: CommandPaletteProps) => {
       description: 'Manage users and settings',
       icon: <AdminPanelSettings />,
       action: () => {
-        navigate('/app/admin')
+        navigateWithLoading('/app/admin', 'Loading Admin Panel...')
         onClose()
       },
       category: 'navigation',
@@ -87,7 +89,7 @@ const CommandPalette = ({ open, onClose }: CommandPaletteProps) => {
       description: 'Approve pending accountant registrations',
       icon: <Person />,
       action: () => {
-        navigate('/app/admin-dashboard')
+        navigateWithLoading('/app/admin-dashboard', 'Loading User Approvals...')
         onClose()
       },
       category: 'navigation',

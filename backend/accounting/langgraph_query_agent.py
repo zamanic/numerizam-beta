@@ -62,7 +62,7 @@ class NumerizamQueryAgent:
     
     def __init__(self):
         self.llm = ChatOpenAI(
-            model="gpt-4",
+            model="gpt-4.1-mini",
             temperature=0,
             api_key=settings.OPENAI_API_KEY
         )
