@@ -1,6 +1,6 @@
 import { useState, useContext } from 'react'
 import { useLocation, Link as RouterLink } from 'react-router-dom'
-import { Container, Box, Typography, TextField, Button, Paper, Link, IconButton, InputAdornment, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
+import { Container, Box, Typography, TextField, Button, Paper, Link, IconButton, InputAdornment, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
 import { Visibility, VisibilityOff, Brightness4, Brightness7 } from '@mui/icons-material'
 import { motion } from 'framer-motion'
 
@@ -8,6 +8,7 @@ import { motion } from 'framer-motion'
 import { AuthContext } from '../../context/AuthContext'
 import { ThemeContext } from '../../context/ThemeContext'
 import { numerizamAuthService } from '../../services/numerizamAuthService'
+import LoadingSpinner from '../../components/LoadingSpinner'
 
 const Login = () => {
   const { login, isLoading } = useContext(AuthContext)
@@ -186,7 +187,7 @@ const Login = () => {
               sx={{ mt: 3, mb: 2, py: 1.5, borderRadius: 2 }}
               disabled={isLoading}
             >
-              {isLoading ? <CircularProgress size={24} /> : 'Sign In'}
+              {isLoading ? <LoadingSpinner type="circular" size="small" /> : 'Sign In'}
             </Button>
 
             {isDemo && (
@@ -198,7 +199,7 @@ const Login = () => {
                 sx={{ mb: 2, py: 1.5, borderRadius: 2 }}
                 disabled={isLoading}
               >
-                {isLoading ? <CircularProgress size={24} /> : 'Access Demo'}
+                {isLoading ? <LoadingSpinner type="circular" size="small" /> : 'Access Demo'}
               </Button>
             )}
 
@@ -265,7 +266,7 @@ const Login = () => {
                   variant="contained"
                   disabled={resetLoading}
                 >
-                  {resetLoading ? <CircularProgress size={20} /> : 'Send Reset Email'}
+                  {resetLoading ? <LoadingSpinner type="circular" size="small" /> : 'Send Reset Email'}
                 </Button>
               )}
             </DialogActions>

@@ -6,7 +6,6 @@ import {
   Grid,
   Button,
   TextField,
-  CircularProgress,
   Stepper,
   Step,
   StepLabel,
@@ -33,6 +32,7 @@ import { formatDate } from '../utils/dateUtils'
 // Import new components and hooks
 import OCRProgressBar from '../components/OCRProgressBar'
 import ConfidenceIndicator from '../components/ConfidenceIndicator'
+import LoadingSpinner from '../components/LoadingSpinner'
 // import DuplicateWarning from '../components/DuplicateWarning' // Commented out as duplicate functionality is not implemented
 import { useOCRStore } from '../store/ocrStore'
 import { useOCRQuery } from '../hooks/useOCRQuery'
@@ -408,7 +408,7 @@ const OCRUpload = () => {
             color="primary"
             onClick={handleProcess}
             disabled={isProcessing}
-            startIcon={isProcessing ? <CircularProgress size={20} /> : undefined}
+            startIcon={isProcessing ? <LoadingSpinner type="circular" size="small" /> : undefined}
           >
             {isProcessing ? 'Processing...' : 'Process'}
           </Button>
@@ -811,7 +811,7 @@ const OCRUpload = () => {
               color="primary"
               onClick={handleConfirm}
               disabled={isSaving}
-              startIcon={isSaving ? <CircularProgress size={20} /> : <Save />}
+              startIcon={isSaving ? <LoadingSpinner type="circular" size="small" /> : <Save />}
             >
               {isSaving ? 'Processing...' : 'Confirm & Save'}
             </Button>

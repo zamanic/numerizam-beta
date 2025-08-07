@@ -1,5 +1,5 @@
 import { useState, useContext, useEffect } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useNavigate } from 'react-router-dom'
 import { styled } from '@mui/material/styles'
 import { Box, AppBar, Toolbar, IconButton, Typography, Drawer, List, Divider, ListItem, ListItemIcon, ListItemText, Avatar, Menu, MenuItem, Tooltip, useMediaQuery, useTheme } from '@mui/material'
 import { Menu as MenuIcon, Dashboard, QueryStats, AdminPanelSettings, ChevronLeft, Logout, Settings, Person, Search, DocumentScanner, Psychology } from '@mui/icons-material'
@@ -12,6 +12,14 @@ import { ThemeContext } from '../context/ThemeContext'
 // Components
 import CommandPalette from '../components/CommandPalette'
 import DateRangeSelector from '../components/DateRangeSelector'
+import NotificationBadge from '../components/NotificationBadge'
+import LoadingSpinner from '../components/LoadingSpinner'
+
+// Services
+import { numerizamAuthService } from '../services/numerizamAuthService'
+
+// Hooks
+import { useRouteTransition } from '../hooks/useRouteTransition'
 
 const drawerWidth = 240
 
@@ -41,6 +49,7 @@ const AppBarStyled = styled(AppBar, { shouldForwardProp: (prop) => prop !== 'ope
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
   }),
+  zIndex: theme.zIndex.drawer + 1,
   ...(open && {
     width: `calc(100% - ${drawerWidth}px)`,
     marginLeft: `${drawerWidth}px`,
@@ -62,9 +71,12 @@ const DrawerHeader = styled('div')(({ theme }) => ({
 const MainLayout = () => {
   const { user, logout } = useContext(AuthContext)
   const { darkMode, toggleTheme } = useContext(ThemeContext)
+  const navigate = useNavigate()
+  const { navigateWithLoading } = useRouteTransition()
   const [open, setOpen] = useState(true)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
+  const [pendingUsersCount, setPendingUsersCount] = useState(0)
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
 
@@ -74,6 +86,29 @@ const MainLayout = () => {
       setOpen(false)
     }
   }, [isMobile])
+
+  // Load pending users count for admin notification
+  useEffect(() => {
+    const loadPendingUsersCount = async () => {
+      if (user?.role === 'Admin') {
+        try {
+          const { users, error } = await numerizamAuthService.getAllUsers()
+          if (!error && users) {
+            const pendingCount = users.filter(user => !user.is_approved).length
+            setPendingUsersCount(pendingCount)
+          }
+        } catch (err) {
+          console.error('Failed to load pending users count:', err)
+        }
+      }
+    }
+
+    loadPendingUsersCount()
+    
+    // Refresh count every 30 seconds
+    const interval = setInterval(loadPendingUsersCount, 30000)
+    return () => clearInterval(interval)
+  }, [user?.role])
 
   const handleDrawerOpen = () => {
     setOpen(true)
@@ -98,6 +133,10 @@ const MainLayout = () => {
 
   const toggleCommandPalette = () => {
     setCommandPaletteOpen(!commandPaletteOpen)
+  }
+
+  const handleNotificationClick = () => {
+    navigateWithLoading('/app/admin-dashboard', 'Loading User Approvals...')
   }
 
   // Keyboard shortcut for command palette
@@ -168,6 +207,19 @@ const MainLayout = () => {
             <DateRangeSelector />
           </Box>
 
+          {/* Admin Notification Badge */}
+          {user?.role === 'Admin' && (
+            <Box sx={{ mr: 2 }}>
+              <NotificationBadge
+                count={pendingUsersCount}
+                onClick={handleNotificationClick}
+                tooltip="Pending accountant approvals"
+                color="error"
+                animate={true}
+              />
+            </Box>
+          )}
+
           {/* User Menu */}
           <Box>
             <Tooltip title="Account settings">
@@ -226,6 +278,7 @@ const MainLayout = () => {
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
+            zIndex: (theme) => theme.zIndex.drawer,
           },
         }}
         variant={isMobile ? 'temporary' : 'persistent'}
@@ -243,25 +296,25 @@ const MainLayout = () => {
         </DrawerHeader>
         <Divider />
         <List>
-          <ListItem button component="a" href="/app">
+          <ListItem button onClick={() => navigateWithLoading('/app', 'Loading Dashboard...')}>
             <ListItemIcon>
               <Dashboard />
             </ListItemIcon>
             <ListItemText primary="Dashboard" />
           </ListItem>
-          <ListItem button component="a" href="/app/query">
+          <ListItem button onClick={() => navigateWithLoading('/app/query', 'Loading AI Query...')}>
             <ListItemIcon>
               <QueryStats />
             </ListItemIcon>
             <ListItemText primary="AI Query" />
           </ListItem>
-          <ListItem button component="a" href="/app/ai">
+          <ListItem button onClick={() => navigateWithLoading('/app/ai', 'Loading AI Assistant...')}>
             <ListItemIcon>
               <Psychology />
             </ListItemIcon>
             <ListItemText primary="AI Assistant" />
           </ListItem>
-          <ListItem button component="a" href="/app/ocr">
+          <ListItem button onClick={() => navigateWithLoading('/app/ocr', 'Loading OCR Upload...')}>
             <ListItemIcon>
               <DocumentScanner />
             </ListItemIcon>
@@ -269,17 +322,27 @@ const MainLayout = () => {
           </ListItem>
           {user?.role === 'Admin' && (
             <>
-              <ListItem button component="a" href="/app/admin">
+              <ListItem button onClick={() => navigateWithLoading('/app/admin', 'Loading Admin Panel...')}>
                 <ListItemIcon>
                   <AdminPanelSettings />
                 </ListItemIcon>
                 <ListItemText primary="Admin Panel" />
               </ListItem>
-              <ListItem button component="a" href="/app/admin-dashboard">
+              <ListItem button onClick={() => navigateWithLoading('/app/admin-dashboard', 'Loading User Approvals...')}>
                 <ListItemIcon>
                   <Person />
                 </ListItemIcon>
                 <ListItemText primary="User Approvals" />
+                {pendingUsersCount > 0 && (
+                  <Box sx={{ ml: 1 }}>
+                    <NotificationBadge
+                      count={pendingUsersCount}
+                      size="small"
+                      color="error"
+                      animate={false}
+                    />
+                  </Box>
+                )}
               </ListItem>
             </>
           )}

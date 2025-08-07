@@ -5,53 +5,65 @@ const commonThemeSettings = {
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
-      fontSize: '2.5rem',
-      fontWeight: 700,
+      fontSize: '24px',
+      fontWeight: 'bold',
+      lineHeight: 1.2,
     },
     h2: {
-      fontSize: '2rem',
-      fontWeight: 700,
+      fontSize: '20px',
+      fontWeight: 'bold',
+      lineHeight: 1.2,
     },
     h3: {
-      fontSize: '1.75rem',
-      fontWeight: 600,
+      fontSize: '18px',
+      fontWeight: 'bold',
+      lineHeight: 1.2,
     },
     h4: {
-      fontSize: '1.5rem',
-      fontWeight: 600,
+      fontSize: '16px',
+      fontWeight: 'bold',
+      lineHeight: 1.2,
     },
     h5: {
-      fontSize: '1.25rem',
-      fontWeight: 600,
+      fontSize: '16px',
+      fontWeight: 'bold',
+      lineHeight: 1.2,
     },
     h6: {
-      fontSize: '1rem',
-      fontWeight: 600,
+      fontSize: '16px',
+      fontWeight: 'bold',
+      lineHeight: 1.2,
     },
     subtitle1: {
-      fontSize: '1rem',
+      fontSize: '14px',
       fontWeight: 500,
+      lineHeight: 1.4,
     },
     subtitle2: {
-      fontSize: '0.875rem',
+      fontSize: '12px',
       fontWeight: 500,
+      lineHeight: 1.4,
     },
     body1: {
-      fontSize: '1rem',
+      fontSize: '14px',
+      fontWeight: 'normal',
       lineHeight: 1.5,
     },
     body2: {
-      fontSize: '0.875rem',
+      fontSize: '12px',
+      fontWeight: 'normal',
       lineHeight: 1.5,
     },
     button: {
       textTransform: 'none' as const,
       fontWeight: 500,
+      fontSize: '14px',
     },
   },
   shape: {
     borderRadius: 8,
   },
+  spacing: 8, // 8px base unit for grid system
   components: {
     MuiButton: {
       styleOverrides: {
@@ -59,11 +71,27 @@ const commonThemeSettings = {
           borderRadius: 8,
           padding: '8px 16px',
           fontWeight: 500,
+          fontSize: '14px',
+          transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            transform: 'translateY(-1px)',
+            boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
+          },
+          '&:focus': {
+            outline: '2px solid #1E40AF',
+            outlineOffset: '2px',
+          },
         },
         contained: {
-          boxShadow: 'none',
+          boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
           '&:hover': {
-            boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+            boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
+          },
+        },
+        outlined: {
+          borderWidth: '2px',
+          '&:hover': {
+            borderWidth: '2px',
           },
         },
       },
@@ -72,9 +100,13 @@ const commonThemeSettings = {
       styleOverrides: {
         root: {
           backgroundImage: 'none',
+          transition: 'box-shadow 0.2s ease-in-out',
         },
         rounded: {
           borderRadius: 12,
+        },
+        elevation1: {
+          boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.05)',
         },
       },
     },
@@ -83,15 +115,20 @@ const commonThemeSettings = {
         root: {
           borderRadius: 12,
           boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.05)',
+          transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.1)',
+            transform: 'translateY(-2px)',
+          },
         },
       },
     },
     MuiCardContent: {
       styleOverrides: {
         root: {
-          padding: 20,
+          padding: 24, // 24px card padding
           '&:last-child': {
-            paddingBottom: 20,
+            paddingBottom: 24,
           },
         },
       },
@@ -108,6 +145,55 @@ const commonThemeSettings = {
         root: {
           '& .MuiOutlinedInput-root': {
             borderRadius: 8,
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#1E40AF',
+              },
+            },
+            '&.Mui-focused': {
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#1E40AF',
+                borderWidth: '2px',
+                boxShadow: '0 0 0 3px rgba(30, 64, 175, 0.1)',
+              },
+            },
+            '&.Mui-error': {
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#DC2626',
+                borderWidth: '2px',
+                animation: 'shake 0.5s ease-in-out',
+              },
+            },
+            // Edit mode styling
+            '&.edit-mode': {
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#1E40AF',
+                borderWidth: '2px',
+                boxShadow: '0 0 0 3px rgba(30, 64, 175, 0.1)',
+              },
+            },
+            // Modified data indicator
+            '&.modified': {
+              position: 'relative',
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                top: '4px',
+                right: '4px',
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: '#EA580C',
+                zIndex: 1,
+              },
+            },
+            // Validated data indicator
+            '&.validated': {
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#059669',
+              },
+            },
           },
         },
       },
@@ -158,45 +244,45 @@ const commonThemeSettings = {
   },
 };
 
-// Light theme
+// Light theme with new design system
 const lightThemeOptions: ThemeOptions = {
   ...commonThemeSettings,
   palette: {
     mode: 'light',
     primary: {
-      main: '#2563eb', // Blue
-      light: '#93c5fd',
-      dark: '#1e40af',
+      main: '#1E40AF', // Deep Blue - Professional, trustworthy
+      light: '#3B82F6',
+      dark: '#1E3A8A',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#8b5cf6', // Purple
-      light: '#c4b5fd',
-      dark: '#6d28d9',
+      main: '#059669', // Teal - Success, money-related
+      light: '#10B981',
+      dark: '#047857',
       contrastText: '#ffffff',
     },
     error: {
-      main: '#ef4444', // Red
-      light: '#fca5a5',
-      dark: '#b91c1c',
+      main: '#DC2626', // Red - Error states
+      light: '#EF4444',
+      dark: '#B91C1C',
     },
     warning: {
-      main: '#f59e0b', // Amber
-      light: '#fcd34d',
-      dark: '#d97706',
+      main: '#EA580C', // Orange - Attention, warnings
+      light: '#F97316',
+      dark: '#C2410C',
     },
     info: {
-      main: '#0ea5e9', // Light Blue
-      light: '#7dd3fc',
-      dark: '#0369a1',
+      main: '#0EA5E9', // Light Blue
+      light: '#38BDF8',
+      dark: '#0284C7',
     },
     success: {
-      main: '#10b981', // Emerald
-      light: '#6ee7b7',
+      main: '#059669', // Teal - Success states
+      light: '#10B981',
       dark: '#047857',
     },
     background: {
-      default: '#f8fafc', // Slate 50
+      default: '#F8FAFC', // Neutral gray scale
       paper: '#ffffff',
     },
     text: {

@@ -70,9 +70,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [initialLoading, setInitialLoading] = useState(true) // For initial session check
   const navigate = useNavigate()
 
+  // Default mock company for fallback scenarios
+  const mockCompany: Company = {
+    id: '1',
+    name: 'Unknown Company',
+    createdAt: new Date().toISOString(),
+    primaryCurrency: 'USD',
+  }
+
   // Helper function to create user data from Numerizam user
   const createUserData = (numerizamUser: NumerizamUser): User => {
-    const mockCompany: Company = {
+    const userCompany: Company = {
       id: '1',
       name: numerizamUser.company_name,
       createdAt: new Date().toISOString(),
@@ -86,8 +94,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       role: numerizamUser.role as UserRole,
       company_name: numerizamUser.company_name,
       is_approved: numerizamUser.is_approved,
-      companies: [mockCompany],
-      currentCompany: mockCompany,
+      companies: [userCompany],
+      currentCompany: userCompany,
     }
   }
 
@@ -188,12 +196,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               console.warn('Profile fetch failed or timed out, using fallback:', profileError)
               // Create fallback user if profile fetch fails
               if (session?.user?.email) {
-                const mockCompany: Company = {
-                  id: '1',
-                  name: 'Unknown Company',
-                  createdAt: new Date().toISOString(),
-                  primaryCurrency: 'USD',
-                }
                 const fallbackUser = {
                   id: session.user.id,
                   email: session.user.email,
@@ -262,12 +264,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.warn('Profile fetch failed or timed out in INITIAL_SESSION, using fallback:', profileError)
             // Create fallback user if profile fetch fails
             if (session?.user?.email) {
-              const mockCompany: Company = {
-                id: '1',
-                name: 'Unknown Company',
-                createdAt: new Date().toISOString(),
-                primaryCurrency: 'USD',
-              }
               const fallbackUser = {
                 id: session.user.id,
                 email: session.user.email,
@@ -313,12 +309,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.warn('Profile fetch failed or timed out in SIGNED_IN, using fallback:', profileError)
             // Create fallback user if profile fetch fails
             if (session?.user?.email) {
-              const mockCompany: Company = {
-                id: '1',
-                name: 'Unknown Company',
-                createdAt: new Date().toISOString(),
-                primaryCurrency: 'USD',
-              }
               const fallbackUser = {
                 id: session.user.id,
                 email: session.user.email,
@@ -377,12 +367,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.warn('Profile fetch failed or timed out in TOKEN_REFRESHED, using fallback:', profileError)
             // Create fallback user if profile fetch fails
             if (session?.user?.email) {
-              const mockCompany: Company = {
-                id: '1',
-                name: 'Unknown Company',
-                createdAt: new Date().toISOString(),
-                primaryCurrency: 'USD',
-              }
               const fallbackUser = {
                 id: session.user.id,
                 email: session.user.email,
@@ -410,7 +394,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string) => {
     setLoading(true)
     try {
-      const { user: authUser, error } = await numerizamAuthService.login(email, password)
+      const { user: _, error } = await numerizamAuthService.login(email, password)
 
       if (error) {
         toast.error(error)

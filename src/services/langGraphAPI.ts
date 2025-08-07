@@ -90,8 +90,41 @@ class LangGraphAPIService {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      // Try to get error details from response body
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        }
+      } catch (e) {
+        // If we can't parse the error response, use the default message
+      }
+      
+      // Provide user-friendly messages for common error scenarios
+      if (response.status === 400) {
+        if (errorMessage.toLowerCase().includes('quota') || 
+            errorMessage.toLowerCase().includes('insufficient')) {
+          throw new Error('AI service quota exceeded. Please try again later or contact support.');
+        } else if (errorMessage.toLowerCase().includes('ai service')) {
+          throw new Error(errorMessage);
+        } else {
+          throw new Error('Invalid request. Please check your input and try again.');
+        }
+      } else if (response.status === 429) {
+        throw new Error('AI service quota exceeded. Please try again later or contact support.');
+      } else if (response.status === 500) {
+        throw new Error('Server error. Please try again later.');
+      } else if (response.status === 503) {
+        throw new Error('AI service temporarily unavailable. Please try again later.');
+      }
+      
+      throw new Error(errorMessage);
     }
 
     return response.json();

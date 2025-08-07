@@ -66,8 +66,8 @@ def process_natural_language_query(request):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Process query with LangGraph agent
-        print("DEBUG: Getting LangGraph agent...")
+        # Process query with LangGraph transaction agent
+        print("DEBUG: Getting LangGraph transaction agent...")
         agent = get_agent()
         print("DEBUG: Processing query with agent...")
         result = agent.process_query(query, company_id)
@@ -78,7 +78,18 @@ def process_natural_language_query(request):
             return Response(result, status=status.HTTP_201_CREATED)
         else:
             print(f"DEBUG: Agent returned failure, returning 400. Result: {result}")
-            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+            # Extract specific error message from agent response
+            error_message = 'Failed to process query'
+            if 'errors' in result and result['errors']:
+                # Use the first error message if available
+                error_message = result['errors'][0]
+            elif 'error' in result:
+                error_message = result['error']
+            
+            return Response(
+                {'error': error_message}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
             
     except Exception as e:
         return Response(
@@ -177,9 +188,9 @@ def agent_status(request):
         agent = get_agent()
         return Response({
             'status': 'active',
-            'model': 'gpt-4o-mini',
+            'model': 'gpt-4.1-mini',
             'nodes': ['parser', 'validator', 'executor'],
-            'message': 'LangGraph agent is ready to process queries'
+            'message': 'LangGraph transaction agent is ready to process queries'
         }, status=status.HTTP_200_OK)
         
     except Exception as e:
@@ -247,12 +258,7 @@ def validate_query(request):
         return Response({
             'valid': True,
             'parsed_data': state.parsed_data.dict() if state.parsed_data else None,
-            'validated_data': {
-                'debit_account': state.validated_data['debit_account'].account,
-                'credit_account': state.validated_data['credit_account'].account,
-                'amount': float(state.validated_data['amount']),
-                'details': state.validated_data['details']
-            } if state.validated_data else None
+            'validated_data': state.validated_data if state.validated_data else None
         }, status=status.HTTP_200_OK)
         
     except Exception as e:

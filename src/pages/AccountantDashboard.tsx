@@ -1,11 +1,17 @@
 import { useState, useContext, useEffect } from 'react'
-import { Box, Typography, Paper, Card, CardContent, CardHeader, IconButton, Button, Menu, MenuItem, Divider, CircularProgress } from '@mui/material'
-import { MoreVert, Add, ArrowUpward, ArrowDownward, BarChart, PieChart, ShowChart, Timeline } from '@mui/icons-material'
+import { Box, Typography, Paper, Card, CardContent, CardHeader, IconButton, Button, Menu, MenuItem, Divider, Tabs, Tab } from '@mui/material'
+import { MoreVert, Add, ArrowUpward, ArrowDownward, BarChart, PieChart, ShowChart, Timeline, Dashboard, DataUsage } from '@mui/icons-material'
 import { Responsive, WidthProvider } from 'react-grid-layout'
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, PieChart as RechartsPieChart, Pie, Cell } from 'recharts'
 
+// Import react-grid-layout CSS
+import 'react-grid-layout/css/styles.css'
+import 'react-resizable/css/styles.css'
+
 // Context
 import { AuthContext } from '../context/AuthContext'
+import LoadingSpinner from '../components/LoadingSpinner'
+import LiveDataDashboard from '../components/LiveDataDashboard'
 
 // Extend react-grid-layout with width provider
 const ResponsiveGridLayout = WidthProvider(Responsive)
@@ -52,6 +58,7 @@ const AccountantDashboard = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [widgetMenuId, setWidgetMenuId] = useState<string | null>(null)
   const [addWidgetAnchorEl, setAddWidgetAnchorEl] = useState<null | HTMLElement>(null)
+  const [currentTab, setCurrentTab] = useState(0)
   
   // Dashboard widgets state
   const [widgets, setWidgets] = useState<Widget[]>([
@@ -68,44 +75,44 @@ const AccountantDashboard = () => {
   // Layout configuration for react-grid-layout
   const [layouts, setLayouts] = useState({
     lg: [
-      { i: 'revenue', x: 0, y: 0, w: 3, h: 1 },
-      { i: 'expenses', x: 3, y: 0, w: 3, h: 1 },
-      { i: 'profit', x: 6, y: 0, w: 3, h: 1 },
-      { i: 'cashflow', x: 9, y: 0, w: 3, h: 1 },
-      { i: 'revenue-chart', x: 0, y: 1, w: 6, h: 2 },
-      { i: 'profit-chart', x: 6, y: 1, w: 6, h: 2 },
-      { i: 'category-breakdown', x: 0, y: 3, w: 6, h: 2 },
-      { i: 'health-score', x: 6, y: 3, w: 6, h: 1 },
+      { i: 'revenue', x: 0, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
+      { i: 'expenses', x: 3, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
+      { i: 'profit', x: 6, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
+      { i: 'cashflow', x: 9, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
+      { i: 'revenue-chart', x: 0, y: 1, w: 6, h: 2, minW: 4, minH: 2 },
+      { i: 'profit-chart', x: 6, y: 1, w: 6, h: 2, minW: 4, minH: 2 },
+      { i: 'category-breakdown', x: 0, y: 3, w: 6, h: 2, minW: 4, minH: 2 },
+      { i: 'health-score', x: 6, y: 3, w: 6, h: 1, minW: 4, minH: 1 },
     ],
     md: [
-      { i: 'revenue', x: 0, y: 0, w: 3, h: 1 },
-      { i: 'expenses', x: 3, y: 0, w: 3, h: 1 },
-      { i: 'profit', x: 6, y: 0, w: 3, h: 1 },
-      { i: 'cashflow', x: 9, y: 0, w: 3, h: 1 },
-      { i: 'revenue-chart', x: 0, y: 1, w: 6, h: 2 },
-      { i: 'profit-chart', x: 6, y: 1, w: 6, h: 2 },
-      { i: 'category-breakdown', x: 0, y: 3, w: 6, h: 2 },
-      { i: 'health-score', x: 6, y: 3, w: 6, h: 1 },
+      { i: 'revenue', x: 0, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
+      { i: 'expenses', x: 3, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
+      { i: 'profit', x: 6, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
+      { i: 'cashflow', x: 9, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
+      { i: 'revenue-chart', x: 0, y: 1, w: 6, h: 2, minW: 4, minH: 2 },
+      { i: 'profit-chart', x: 6, y: 1, w: 6, h: 2, minW: 4, minH: 2 },
+      { i: 'category-breakdown', x: 0, y: 3, w: 6, h: 2, minW: 4, minH: 2 },
+      { i: 'health-score', x: 6, y: 3, w: 6, h: 1, minW: 4, minH: 1 },
     ],
     sm: [
-      { i: 'revenue', x: 0, y: 0, w: 3, h: 1 },
-      { i: 'expenses', x: 3, y: 0, w: 3, h: 1 },
-      { i: 'profit', x: 0, y: 1, w: 3, h: 1 },
-      { i: 'cashflow', x: 3, y: 1, w: 3, h: 1 },
-      { i: 'revenue-chart', x: 0, y: 2, w: 6, h: 2 },
-      { i: 'profit-chart', x: 0, y: 4, w: 6, h: 2 },
-      { i: 'category-breakdown', x: 0, y: 6, w: 6, h: 2 },
-      { i: 'health-score', x: 0, y: 8, w: 6, h: 1 },
+      { i: 'revenue', x: 0, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
+      { i: 'expenses', x: 3, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
+      { i: 'profit', x: 0, y: 1, w: 3, h: 1, minW: 2, minH: 1 },
+      { i: 'cashflow', x: 3, y: 1, w: 3, h: 1, minW: 2, minH: 1 },
+      { i: 'revenue-chart', x: 0, y: 2, w: 6, h: 2, minW: 4, minH: 2 },
+      { i: 'profit-chart', x: 0, y: 4, w: 6, h: 2, minW: 4, minH: 2 },
+      { i: 'category-breakdown', x: 0, y: 6, w: 6, h: 2, minW: 4, minH: 2 },
+      { i: 'health-score', x: 0, y: 8, w: 6, h: 1, minW: 4, minH: 1 },
     ],
     xs: [
-      { i: 'revenue', x: 0, y: 0, w: 2, h: 1 },
-      { i: 'expenses', x: 2, y: 0, w: 2, h: 1 },
-      { i: 'profit', x: 0, y: 1, w: 2, h: 1 },
-      { i: 'cashflow', x: 2, y: 1, w: 2, h: 1 },
-      { i: 'revenue-chart', x: 0, y: 2, w: 4, h: 2 },
-      { i: 'profit-chart', x: 0, y: 4, w: 4, h: 2 },
-      { i: 'category-breakdown', x: 0, y: 6, w: 4, h: 2 },
-      { i: 'health-score', x: 0, y: 8, w: 4, h: 1 },
+      { i: 'revenue', x: 0, y: 0, w: 4, h: 1, minW: 2, minH: 1 },
+      { i: 'expenses', x: 0, y: 1, w: 4, h: 1, minW: 2, minH: 1 },
+      { i: 'profit', x: 0, y: 2, w: 4, h: 1, minW: 2, minH: 1 },
+      { i: 'cashflow', x: 0, y: 3, w: 4, h: 1, minW: 2, minH: 1 },
+      { i: 'revenue-chart', x: 0, y: 4, w: 4, h: 2, minW: 4, minH: 2 },
+      { i: 'profit-chart', x: 0, y: 6, w: 4, h: 2, minW: 4, minH: 2 },
+      { i: 'category-breakdown', x: 0, y: 8, w: 4, h: 2, minW: 4, minH: 2 },
+      { i: 'health-score', x: 0, y: 10, w: 4, h: 1, minW: 4, minH: 1 },
     ],
   })
 
@@ -159,24 +166,59 @@ const AccountantDashboard = () => {
     handleWidgetMenuClose()
   }
 
+  // Handle tab change
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    setCurrentTab(newValue)
+  }
+
   // Render KPI widget
   const renderKpiWidget = (widget: Widget) => {
     const { data } = widget
     return (
-      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 2 }}>
-        <Typography variant="h6" color="textSecondary" gutterBottom>
+      <Box sx={{ 
+        height: '100%', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        justifyContent: 'center', 
+        p: 2,
+        minHeight: 120,
+        overflow: 'hidden'
+      }}>
+        <Typography 
+          variant="h6" 
+          color="textSecondary" 
+          gutterBottom
+          sx={{ 
+            fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' },
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}
+        >
           {widget.title}
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'baseline' }}>
-          <Typography variant="h4" component="div" fontWeight="bold">
+        <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 1 }}>
+          <Typography 
+            variant="h4" 
+            component="div" 
+            fontWeight="bold"
+            sx={{ 
+              fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              minWidth: 0,
+              flex: '1 1 auto'
+            }}
+          >
             ${data.value.toLocaleString()}
           </Typography>
           <Box
             sx={{
               display: 'flex',
               alignItems: 'center',
-              ml: 1,
               color: data.trend === 'up' ? 'success.main' : 'error.main',
+              flexShrink: 0
             }}
           >
             {data.trend === 'up' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />}
@@ -305,7 +347,7 @@ const AccountantDashboard = () => {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-        <CircularProgress />
+        <LoadingSpinner type="gradient" size="large" message="Loading dashboard..." />
       </Box>
     )
   }
@@ -316,54 +358,119 @@ const AccountantDashboard = () => {
         <Typography variant="h4" component="h1">
           {user?.currentCompany?.name || 'Company'} Dashboard
         </Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<Add />}
-          onClick={handleAddWidgetMenuOpen}
-        >
-          Add Widget
-        </Button>
+        {currentTab === 0 && (
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<Add />}
+            onClick={handleAddWidgetMenuOpen}
+          >
+            Add Widget
+          </Button>
+        )}
       </Box>
 
-      <Paper sx={{ p: 0, borderRadius: 2, overflow: 'hidden', height: 'calc(100% - 60px)' }}>
-        <ResponsiveGridLayout
-          className="layout"
-          layouts={layouts}
-          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
-          cols={{ lg: 12, md: 12, sm: 6, xs: 4 }}
-          rowHeight={120}
-          onLayoutChange={handleLayoutChange}
-          isDraggable
-          isResizable
-          containerPadding={[16, 16]}
-        >
-          {widgets.map((widget) => (
-            <Box key={widget.id} sx={{ overflow: 'hidden' }}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <CardHeader
-                  title={widget.title}
-                  titleTypographyProps={{ variant: 'subtitle1' }}
-                  sx={{ py: 1, px: 2 }}
-                  action={
-                    <IconButton
-                      aria-label="widget menu"
-                      size="small"
-                      onClick={(e) => handleWidgetMenuOpen(e, widget.id)}
-                    >
-                      <MoreVert fontSize="small" />
-                    </IconButton>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Tabs value={currentTab} onChange={handleTabChange} aria-label="dashboard tabs">
+          <Tab icon={<Dashboard />} label="Demo Dashboard" />
+          <Tab icon={<DataUsage />} label="Live Data Dashboard" />
+        </Tabs>
+      </Box>
+
+      {currentTab === 0 ? (
+        <Paper sx={{ p: 0, borderRadius: 2, overflow: 'hidden', height: 'calc(100% - 120px)' }}>
+          <ResponsiveGridLayout
+            className="layout"
+            layouts={layouts}
+            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
+            cols={{ lg: 12, md: 12, sm: 6, xs: 4 }}
+            rowHeight={120}
+            onLayoutChange={handleLayoutChange}
+            isDraggable
+            isResizable
+            containerPadding={[16, 16]}
+            margin={[16, 16]}
+            compactType="vertical"
+            preventCollision={true}
+            style={{ position: 'relative', zIndex: 1 }}
+          >
+            {widgets.map((widget) => (
+              <Box key={widget.id} sx={{ overflow: 'hidden', width: '100%', height: '100%' }}>
+                <Card sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  overflow: 'hidden',
+                  minHeight: 120,
+                  boxShadow: 2,
+                  '&:hover': {
+                    boxShadow: 4,
                   }
-                />
-                <Divider />
-                <CardContent sx={{ p: 0, flexGrow: 1, overflow: 'hidden' }}>
-                  {renderWidget(widget)}
-                </CardContent>
-              </Card>
-            </Box>
-          ))}
-        </ResponsiveGridLayout>
-      </Paper>
+                }}>
+                  {widget.type !== 'kpi' && (
+                    <>
+                      <CardHeader
+                        title={widget.title}
+                        titleTypographyProps={{ 
+                          variant: 'subtitle1',
+                          sx: { 
+                            fontSize: { xs: '0.875rem', sm: '1rem' },
+                            fontWeight: 600
+                          }
+                        }}
+                        sx={{ py: 1, px: 2, minHeight: 48 }}
+                        action={
+                          <IconButton
+                            aria-label="widget menu"
+                            size="small"
+                            onClick={(e) => handleWidgetMenuOpen(e, widget.id)}
+                          >
+                            <MoreVert fontSize="small" />
+                          </IconButton>
+                        }
+                      />
+                      <Divider />
+                    </>
+                  )}
+                  <CardContent sx={{ 
+                    p: widget.type === 'kpi' ? 0 : 1, 
+                    flexGrow: 1, 
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    position: 'relative'
+                  }}>
+                    {widget.type === 'kpi' && (
+                      <IconButton
+                        aria-label="widget menu"
+                        size="small"
+                        onClick={(e) => handleWidgetMenuOpen(e, widget.id)}
+                        sx={{ 
+                          position: 'absolute', 
+                          top: 8, 
+                          right: 8, 
+                          zIndex: 1,
+                          backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                          '&:hover': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                          }
+                        }}
+                      >
+                        <MoreVert fontSize="small" />
+                      </IconButton>
+                    )}
+                    {renderWidget(widget)}
+                  </CardContent>
+                </Card>
+              </Box>
+            ))}
+          </ResponsiveGridLayout>
+        </Paper>
+      ) : (
+        <Box sx={{ height: 'calc(100% - 120px)' }}>
+          <LiveDataDashboard />
+        </Box>
+      )}
 
       {/* Widget menu */}
       <Menu
