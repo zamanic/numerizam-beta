@@ -6,7 +6,7 @@ import { Menu as MenuIcon, Dashboard, QueryStats, AdminPanelSettings, ChevronLef
 import { motion } from 'framer-motion'
 
 // Context
-import { AuthContext } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContext'
 import { ThemeContext } from '../context/ThemeContext'
 
 // Components
@@ -69,7 +69,7 @@ const DrawerHeader = styled('div')(({ theme }) => ({
 }))
 
 const MainLayout = () => {
-  const { user, logout } = useContext(AuthContext)
+  const { user, logout } = useAuth()
   const { darkMode, toggleTheme } = useContext(ThemeContext)
   const navigate = useNavigate()
   const { navigateWithLoading } = useRouteTransition()
@@ -350,14 +350,14 @@ const MainLayout = () => {
       </Drawer>
 
       {/* Main Content */}
-      <Main open={open}>
+      <Main open={open} sx={{ minHeight: '100vh', overflow: 'auto' }}>
         <DrawerHeader />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.3 }}
-          style={{ height: '100%' }}
+          style={{ minHeight: 'calc(100vh - 64px)', paddingBottom: '2rem' }}
         >
           <Outlet />
         </motion.div>

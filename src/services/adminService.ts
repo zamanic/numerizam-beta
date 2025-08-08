@@ -265,6 +265,35 @@ class AdminService {
       return { users: [], error: `Failed to fetch users by status: ${(error as Error).message}` }
     }
   }
+
+  /**
+   * Truncate a specific table
+   * This is an admin-only operation that removes all data from a table
+   */
+  async truncateTable(tableName: string): Promise<{ success: boolean; error: string | null }> {
+    try {
+      // Only allow truncating specific tables for safety
+      const allowedTables = ['calendar', 'chartofaccounts', 'generalledger', 'territory'];
+      
+      if (!allowedTables.includes(tableName)) {
+        return { 
+          success: false, 
+          error: `Table '${tableName}' cannot be truncated. Only the following tables can be truncated: ${allowedTables.join(', ')}` 
+        };
+      }
+
+      // Execute the truncate operation with CASCADE to handle foreign key constraints
+      const { error } = await supabase.rpc('admin_truncate_table', { table_name: tableName });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, error: null };
+    } catch (error) {
+      return { success: false, error: `Failed to truncate table: ${(error as Error).message}` };
+    }
+  }
 }
 
 export const adminService = new AdminService()

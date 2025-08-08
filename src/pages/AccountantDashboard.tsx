@@ -1,15 +1,15 @@
-import { useState, useContext, useEffect } from 'react'
-import { Box, Typography, Paper, Card, CardContent, CardHeader, IconButton, Button, Menu, MenuItem, Divider, Tabs, Tab } from '@mui/material'
+import { useState, useEffect } from 'react'
+import { Box, Typography, Paper, Card, CardContent, CardHeader, IconButton, Button, Menu, MenuItem, Divider, Tabs, Tab, useTheme, useMediaQuery } from '@mui/material'
 import { MoreVert, Add, ArrowUpward, ArrowDownward, BarChart, PieChart, ShowChart, Timeline, Dashboard, DataUsage } from '@mui/icons-material'
 import { Responsive, WidthProvider } from 'react-grid-layout'
-import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, PieChart as RechartsPieChart, Pie, Cell } from 'recharts'
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, PieChart as RechartsPieChart, Pie, Cell, Legend } from 'recharts'
 
 // Import react-grid-layout CSS
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 
 // Context
-import { AuthContext } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContext'
 import LoadingSpinner from '../components/LoadingSpinner'
 import LiveDataDashboard from '../components/LiveDataDashboard'
 
@@ -53,7 +53,11 @@ const mockCategoryData = [
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
 const AccountantDashboard = () => {
-  const { user } = useContext(AuthContext)
+  const { user } = useAuth()
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'))
+  
   const [loading, setLoading] = useState(true)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [widgetMenuId, setWidgetMenuId] = useState<string | null>(null)
@@ -79,40 +83,40 @@ const AccountantDashboard = () => {
       { i: 'expenses', x: 3, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
       { i: 'profit', x: 6, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
       { i: 'cashflow', x: 9, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
-      { i: 'revenue-chart', x: 0, y: 1, w: 6, h: 2, minW: 4, minH: 2 },
-      { i: 'profit-chart', x: 6, y: 1, w: 6, h: 2, minW: 4, minH: 2 },
-      { i: 'category-breakdown', x: 0, y: 3, w: 6, h: 2, minW: 4, minH: 2 },
-      { i: 'health-score', x: 6, y: 3, w: 6, h: 1, minW: 4, minH: 1 },
+      { i: 'revenue-chart', x: 0, y: 1, w: 6, h: 3, minW: 4, minH: 2 },
+      { i: 'profit-chart', x: 6, y: 1, w: 6, h: 3, minW: 4, minH: 2 },
+      { i: 'category-breakdown', x: 0, y: 4, w: 6, h: 3, minW: 4, minH: 2 },
+      { i: 'health-score', x: 6, y: 4, w: 6, h: 2, minW: 4, minH: 1 },
     ],
     md: [
       { i: 'revenue', x: 0, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
       { i: 'expenses', x: 3, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
       { i: 'profit', x: 6, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
       { i: 'cashflow', x: 9, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
-      { i: 'revenue-chart', x: 0, y: 1, w: 6, h: 2, minW: 4, minH: 2 },
-      { i: 'profit-chart', x: 6, y: 1, w: 6, h: 2, minW: 4, minH: 2 },
-      { i: 'category-breakdown', x: 0, y: 3, w: 6, h: 2, minW: 4, minH: 2 },
-      { i: 'health-score', x: 6, y: 3, w: 6, h: 1, minW: 4, minH: 1 },
+      { i: 'revenue-chart', x: 0, y: 1, w: 6, h: 3, minW: 4, minH: 2 },
+      { i: 'profit-chart', x: 6, y: 1, w: 6, h: 3, minW: 4, minH: 2 },
+      { i: 'category-breakdown', x: 0, y: 4, w: 6, h: 3, minW: 4, minH: 2 },
+      { i: 'health-score', x: 6, y: 4, w: 6, h: 2, minW: 4, minH: 1 },
     ],
     sm: [
-      { i: 'revenue', x: 0, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
-      { i: 'expenses', x: 3, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
-      { i: 'profit', x: 0, y: 1, w: 3, h: 1, minW: 2, minH: 1 },
-      { i: 'cashflow', x: 3, y: 1, w: 3, h: 1, minW: 2, minH: 1 },
-      { i: 'revenue-chart', x: 0, y: 2, w: 6, h: 2, minW: 4, minH: 2 },
-      { i: 'profit-chart', x: 0, y: 4, w: 6, h: 2, minW: 4, minH: 2 },
-      { i: 'category-breakdown', x: 0, y: 6, w: 6, h: 2, minW: 4, minH: 2 },
-      { i: 'health-score', x: 0, y: 8, w: 6, h: 1, minW: 4, minH: 1 },
+      { i: 'revenue', x: 0, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
+      { i: 'expenses', x: 3, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
+      { i: 'profit', x: 0, y: 2, w: 3, h: 2, minW: 2, minH: 2 },
+      { i: 'cashflow', x: 3, y: 2, w: 3, h: 2, minW: 2, minH: 2 },
+      { i: 'revenue-chart', x: 0, y: 4, w: 6, h: 4, minW: 4, minH: 3 },
+      { i: 'profit-chart', x: 0, y: 8, w: 6, h: 4, minW: 4, minH: 3 },
+      { i: 'category-breakdown', x: 0, y: 12, w: 6, h: 4, minW: 4, minH: 3 },
+      { i: 'health-score', x: 0, y: 16, w: 6, h: 2, minW: 4, minH: 2 },
     ],
     xs: [
-      { i: 'revenue', x: 0, y: 0, w: 4, h: 1, minW: 2, minH: 1 },
-      { i: 'expenses', x: 0, y: 1, w: 4, h: 1, minW: 2, minH: 1 },
-      { i: 'profit', x: 0, y: 2, w: 4, h: 1, minW: 2, minH: 1 },
-      { i: 'cashflow', x: 0, y: 3, w: 4, h: 1, minW: 2, minH: 1 },
-      { i: 'revenue-chart', x: 0, y: 4, w: 4, h: 2, minW: 4, minH: 2 },
-      { i: 'profit-chart', x: 0, y: 6, w: 4, h: 2, minW: 4, minH: 2 },
-      { i: 'category-breakdown', x: 0, y: 8, w: 4, h: 2, minW: 4, minH: 2 },
-      { i: 'health-score', x: 0, y: 10, w: 4, h: 1, minW: 4, minH: 1 },
+      { i: 'revenue', x: 0, y: 0, w: 4, h: 3, minW: 4, minH: 3 },
+      { i: 'expenses', x: 0, y: 3, w: 4, h: 3, minW: 4, minH: 3 },
+      { i: 'profit', x: 0, y: 6, w: 4, h: 3, minW: 4, minH: 3 },
+      { i: 'cashflow', x: 0, y: 9, w: 4, h: 3, minW: 4, minH: 3 },
+      { i: 'revenue-chart', x: 0, y: 12, w: 4, h: 5, minW: 4, minH: 4 },
+      { i: 'profit-chart', x: 0, y: 17, w: 4, h: 5, minW: 4, minH: 4 },
+      { i: 'category-breakdown', x: 0, y: 22, w: 4, h: 5, minW: 4, minH: 4 },
+      { i: 'health-score', x: 0, y: 27, w: 4, h: 4, minW: 4, minH: 3 },
     ],
   })
 
@@ -171,25 +175,28 @@ const AccountantDashboard = () => {
     setCurrentTab(newValue)
   }
 
-  // Render KPI widget
+  // Render KPI widget with improved mobile responsiveness
   const renderKpiWidget = (widget: Widget) => {
     const { data } = widget
+    const isPositive = data.trend === 'up'
+    
     return (
       <Box sx={{ 
+        p: isMobile ? 2 : 2, 
         height: '100%', 
         display: 'flex', 
         flexDirection: 'column', 
-        justifyContent: 'center', 
-        p: 2,
-        minHeight: 120,
+        justifyContent: 'center',
+        minHeight: isMobile ? 180 : 140,
         overflow: 'hidden'
       }}>
         <Typography 
-          variant="h6" 
-          color="textSecondary" 
-          gutterBottom
+          variant={isMobile ? "body1" : "subtitle2"} 
+          color="text.secondary" 
           sx={{ 
-            fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' },
+            mb: 1,
+            fontSize: isMobile ? '1rem' : '0.875rem',
+            fontWeight: 600,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis'
@@ -197,49 +204,77 @@ const AccountantDashboard = () => {
         >
           {widget.title}
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 1 }}>
+        <Typography 
+          variant={isMobile ? "h4" : "h4"} 
+          component="div" 
+          sx={{ 
+            fontWeight: 'bold',
+            mb: 1.5,
+            fontSize: isMobile ? '1.75rem' : '1.5rem',
+            lineHeight: 1.2,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            color: 'primary.main'
+          }}
+        >
+          ${data.value.toLocaleString()}
+        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          {isPositive ? (
+            <ArrowUpward sx={{ 
+              color: 'success.main', 
+              fontSize: isMobile ? '1.25rem' : '1.25rem' 
+            }} />
+          ) : (
+            <ArrowDownward sx={{ 
+              color: 'error.main', 
+              fontSize: isMobile ? '1.25rem' : '1.25rem' 
+            }} />
+          )}
           <Typography 
-            variant="h4" 
-            component="div" 
-            fontWeight="bold"
+            variant={isMobile ? "body2" : "body2"} 
+            color={isPositive ? 'success.main' : 'error.main'}
             sx={{ 
-              fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              minWidth: 0,
-              flex: '1 1 auto'
+              fontWeight: 600,
+              fontSize: isMobile ? '0.875rem' : '0.875rem'
             }}
           >
-            ${data.value.toLocaleString()}
+            {Math.abs(data.change)}%
           </Typography>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              color: data.trend === 'up' ? 'success.main' : 'error.main',
-              flexShrink: 0
-            }}
-          >
-            {data.trend === 'up' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />}
-            <Typography variant="body2" sx={{ ml: 0.5 }}>
-              {Math.abs(data.change)}%
-            </Typography>
-          </Box>
         </Box>
       </Box>
     )
   }
 
-  // Render bar chart widget
+  // Render bar chart widget with improved mobile responsiveness
   const renderBarChartWidget = (widget: Widget) => {
     return (
-      <Box sx={{ height: '100%', width: '100%', p: 1 }}>
+      <Box sx={{ 
+        height: '100%', 
+        width: '100%', 
+        minHeight: isMobile ? 200 : 250,
+        p: 1 
+      }}>
         <ResponsiveContainer width="100%" height="100%">
-          <RechartsBarChart data={widget.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <RechartsBarChart data={widget.data} margin={{ 
+            top: 20, 
+            right: isMobile ? 5 : 30, 
+            left: isMobile ? 5 : 20, 
+            bottom: 5 
+          }}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
+            <XAxis 
+              dataKey="month" 
+              fontSize={isMobile ? 10 : 12}
+              angle={isMobile ? -45 : 0}
+              textAnchor={isMobile ? 'end' : 'middle'}
+              height={isMobile ? 60 : 30}
+            />
+            <YAxis 
+              fontSize={isMobile ? 10 : 12}
+              tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+            />
             <RechartsTooltip formatter={(value) => [`$${value}`, 'Revenue']} />
             <Bar dataKey="value" fill="#8884d8" />
           </RechartsBarChart>
@@ -248,63 +283,138 @@ const AccountantDashboard = () => {
     )
   }
 
-  // Render line chart widget
+  // Render line chart widget with improved mobile responsiveness
   const renderLineChartWidget = (widget: Widget) => {
     return (
-      <Box sx={{ height: '100%', width: '100%', p: 1 }}>
+      <Box sx={{ 
+        height: '100%', 
+        width: '100%', 
+        minHeight: isMobile ? 200 : 250,
+        p: 1 
+      }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={widget.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <LineChart data={widget.data} margin={{ 
+            top: 20, 
+            right: isMobile ? 5 : 30, 
+            left: isMobile ? 5 : 20, 
+            bottom: 5 
+          }}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
+            <XAxis 
+              dataKey="month" 
+              fontSize={isMobile ? 10 : 12}
+              angle={isMobile ? -45 : 0}
+              textAnchor={isMobile ? 'end' : 'middle'}
+              height={isMobile ? 60 : 30}
+            />
+            <YAxis 
+              fontSize={isMobile ? 10 : 12}
+              tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+            />
             <RechartsTooltip formatter={(value) => [`$${value}`, 'Profit']} />
-            <Line type="monotone" dataKey="value" stroke="#82ca9d" strokeWidth={2} dot={{ r: 4 }} />
+            <Line 
+              type="monotone" 
+              dataKey="value" 
+              stroke="#82ca9d" 
+              strokeWidth={2} 
+              dot={{ r: isMobile ? 3 : 4 }} 
+            />
           </LineChart>
         </ResponsiveContainer>
       </Box>
     )
   }
 
-  // Render pie chart widget
+  // Render Pie Chart widget with improved mobile responsiveness and labels
   const renderPieChartWidget = (widget: Widget) => {
+    const data = widget.data
+    
+    const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }: any) => {
+      const RADIAN = Math.PI / 180
+      const radius = innerRadius + (outerRadius - innerRadius) * 0.5
+      const x = cx + radius * Math.cos(-midAngle * RADIAN)
+      const y = cy + radius * Math.sin(-midAngle * RADIAN)
+
+      return (
+        <text 
+          x={x} 
+          y={y} 
+          fill="white" 
+          textAnchor={x > cx ? 'start' : 'end'} 
+          dominantBaseline="central"
+          fontSize={isMobile ? 12 : 14}
+          fontWeight="bold"
+        >
+          {`${(percent * 100).toFixed(0)}%`}
+        </text>
+      )
+    }
+
     return (
-      <Box sx={{ height: '100%', width: '100%', p: 1 }}>
+      <Box sx={{ 
+        height: '100%', 
+        width: '100%', 
+        display: 'flex', 
+        flexDirection: 'column',
+        minHeight: isMobile ? 300 : 250,
+        p: 1
+      }}>
         <ResponsiveContainer width="100%" height="100%">
           <RechartsPieChart>
             <Pie
-              data={widget.data}
+              data={data}
               cx="50%"
               cy="50%"
               labelLine={false}
-              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-              outerRadius={80}
+              label={renderCustomizedLabel}
+              outerRadius={isMobile ? 80 : 100}
               fill="#8884d8"
               dataKey="value"
             >
-              {widget.data.map((_entry: any, index: number) => (
+              {data.map((_entry: any, index: number) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
-            <RechartsTooltip formatter={(value) => [`${value}%`, 'Percentage']} />
+            <RechartsTooltip 
+              formatter={(value: any) => [`${value}%`, 'Percentage']}
+            />
+            <Legend 
+              wrapperStyle={{
+                fontSize: isMobile ? '12px' : '14px',
+                paddingTop: '10px'
+              }}
+            />
           </RechartsPieChart>
         </ResponsiveContainer>
       </Box>
     )
   }
 
-  // Render health score widget
+  // Render health score widget with improved mobile responsiveness
   const renderHealthScoreWidget = (widget: Widget) => {
     const { data } = widget
     return (
-      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 2 }}>
-        <Typography variant="h6" color="textSecondary" gutterBottom>
+      <Box sx={{ 
+        height: '100%', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        justifyContent: 'center', 
+        p: isMobile ? 1.5 : 2,
+        minHeight: isMobile ? 120 : 140
+      }}>
+        <Typography 
+          variant={isMobile ? "body2" : "h6"} 
+          color="textSecondary" 
+          gutterBottom
+          sx={{ fontSize: isMobile ? '0.875rem' : '1.25rem' }}
+        >
           {widget.title}
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Box
             sx={{
-              width: 60,
-              height: 60,
+              width: isMobile ? 50 : 60,
+              height: isMobile ? 50 : 60,
               borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
@@ -313,13 +423,23 @@ const AccountantDashboard = () => {
               color: 'white',
               fontWeight: 'bold',
               mr: 2,
+              fontSize: isMobile ? '0.75rem' : '0.875rem'
             }}
           >
             {data.score}/100
           </Box>
-          <Typography variant="body1">{data.summary}</Typography>
+          <Typography 
+            variant={isMobile ? "body2" : "body1"}
+            sx={{ fontSize: isMobile ? '0.75rem' : '1rem' }}
+          >
+            {data.summary}
+          </Typography>
         </Box>
-        <Typography variant="caption" color="textSecondary">
+        <Typography 
+          variant="caption" 
+          color="textSecondary"
+          sx={{ fontSize: isMobile ? '0.6rem' : '0.75rem' }}
+        >
           AI-generated based on your financial data
         </Typography>
       </Box>
@@ -353,7 +473,7 @@ const AccountantDashboard = () => {
   }
 
   return (
-    <Box sx={{ height: '100%' }}>
+    <Box sx={{ minHeight: '100vh', pb: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
           {user?.currentCompany?.name || 'Company'} Dashboard
@@ -378,30 +498,29 @@ const AccountantDashboard = () => {
       </Box>
 
       {currentTab === 0 ? (
-        <Paper sx={{ p: 0, borderRadius: 2, overflow: 'hidden', height: 'calc(100% - 120px)' }}>
+        <Paper sx={{ p: 0, borderRadius: 2, minHeight: '80vh' }}>
           <ResponsiveGridLayout
             className="layout"
             layouts={layouts}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
             cols={{ lg: 12, md: 12, sm: 6, xs: 4 }}
-            rowHeight={120}
+            rowHeight={isMobile ? 80 : 120}
             onLayoutChange={handleLayoutChange}
             isDraggable
             isResizable
             containerPadding={[16, 16]}
             margin={[16, 16]}
             compactType="vertical"
-            preventCollision={true}
-            style={{ position: 'relative', zIndex: 1 }}
+            preventCollision={false}
+            style={{ position: 'relative', zIndex: 1, minHeight: '100%' }}
           >
             {widgets.map((widget) => (
-              <Box key={widget.id} sx={{ overflow: 'hidden', width: '100%', height: '100%' }}>
+              <Box key={widget.id} sx={{ width: '100%', height: '100%' }}>
                 <Card sx={{ 
                   height: '100%', 
                   display: 'flex', 
-                  flexDirection: 'column', 
-                  overflow: 'hidden',
-                  minHeight: 120,
+                  flexDirection: 'column',
+                  minHeight: isMobile ? 200 : 140,
                   boxShadow: 2,
                   '&:hover': {
                     boxShadow: 4,
@@ -412,13 +531,13 @@ const AccountantDashboard = () => {
                       <CardHeader
                         title={widget.title}
                         titleTypographyProps={{ 
-                          variant: 'subtitle1',
+                          variant: isMobile ? 'body2' : 'subtitle1',
                           sx: { 
-                            fontSize: { xs: '0.875rem', sm: '1rem' },
+                            fontSize: isMobile ? '0.75rem' : '1rem',
                             fontWeight: 600
                           }
                         }}
-                        sx={{ py: 1, px: 2, minHeight: 48 }}
+                        sx={{ py: isMobile ? 0.5 : 1, px: isMobile ? 1 : 2, minHeight: isMobile ? 36 : 48 }}
                         action={
                           <IconButton
                             aria-label="widget menu"
@@ -433,32 +552,47 @@ const AccountantDashboard = () => {
                     </>
                   )}
                   <CardContent sx={{ 
-                    p: widget.type === 'kpi' ? 0 : 1, 
-                    flexGrow: 1, 
-                    overflow: 'hidden',
+                    p: widget.type === 'kpi' ? 0 : (isMobile ? 0.5 : 1), 
+                    flexGrow: 1,
                     display: 'flex',
                     flexDirection: 'column',
                     position: 'relative'
                   }}>
-                    {widget.type === 'kpi' && (
-                      <IconButton
-                        aria-label="widget menu"
-                        size="small"
-                        onClick={(e) => handleWidgetMenuOpen(e, widget.id)}
+                    <IconButton
+                      aria-label="widget menu"
+                      size="small"
+                      onClick={(e) => handleWidgetMenuOpen(e, widget.id)}
+                      sx={{ 
+                        position: 'absolute', 
+                        top: isMobile ? 4 : 8, 
+                        right: isMobile ? 4 : 8, 
+                        zIndex: 1,
+                        backgroundColor: theme.palette.mode === 'dark' 
+                          ? 'rgba(255, 255, 255, 0.05)' 
+                          : 'rgba(0, 0, 0, 0.04)',
+                        border: theme.palette.mode === 'dark' 
+                          ? '1px solid rgba(255, 255, 255, 0.12)' 
+                          : '1px solid rgba(0, 0, 0, 0.12)',
+                        borderRadius: '4px',
+                        width: '24px',
+                        height: '24px',
+                        '&:hover': {
+                          backgroundColor: theme.palette.mode === 'dark' 
+                            ? 'rgba(255, 255, 255, 0.08)' 
+                            : 'rgba(0, 0, 0, 0.08)',
+                        }
+                      }}
+                    >
+                      <MoreVert 
+                        fontSize="small" 
                         sx={{ 
-                          position: 'absolute', 
-                          top: 8, 
-                          right: 8, 
-                          zIndex: 1,
-                          backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                          '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                          }
-                        }}
-                      >
-                        <MoreVert fontSize="small" />
-                      </IconButton>
-                    )}
+                          color: theme.palette.mode === 'dark' 
+                            ? 'rgba(255, 255, 255, 0.7)' 
+                            : 'rgba(0, 0, 0, 0.6)',
+                          fontSize: '16px'
+                        }} 
+                      />
+                    </IconButton>
                     {renderWidget(widget)}
                   </CardContent>
                 </Card>
@@ -467,7 +601,7 @@ const AccountantDashboard = () => {
           </ResponsiveGridLayout>
         </Paper>
       ) : (
-        <Box sx={{ height: 'calc(100% - 120px)' }}>
+        <Box sx={{ minHeight: '80vh' }}>
           <LiveDataDashboard />
         </Box>
       )}

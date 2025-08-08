@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from 'react-router-dom'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import { AnimatePresence } from 'framer-motion'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import 'react-toastify/dist/ReactToastify.css'
 
 // Layouts
@@ -37,6 +38,16 @@ import RouteLoadingOverlay from './components/RouteLoadingOverlay'
 function App() {
   const [darkMode, setDarkMode] = useState(false)
   const location = useLocation()
+
+  // Create QueryClient instance
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: 1,
+        refetchOnWindowFocus: false,
+      },
+    },
+  })
 
   // Check for saved theme preference
   useEffect(() => {
@@ -105,14 +116,15 @@ function App() {
   })
 
   return (
-    <ThemeContext.Provider value={{ darkMode, toggleTheme }}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <AuthProvider>
-          <RouteLoadingProvider>
-            <RouteLoadingOverlay />
-            <AnimatePresence mode="wait">
-              <Routes location={location} key={location.pathname}>
+    <QueryClientProvider client={queryClient}>
+      <ThemeContext.Provider value={{ darkMode, toggleTheme }}>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <AuthProvider>
+            <RouteLoadingProvider>
+              <RouteLoadingOverlay />
+              <AnimatePresence mode="wait">
+                <Routes location={location} key={location.pathname}>
               {/* Public routes */}
               <Route path="/" element={<PublicDashboard />} />
               <Route path="/demo" element={<QueryPage />} />
@@ -192,6 +204,7 @@ function App() {
         </AuthProvider>
       </ThemeProvider>
     </ThemeContext.Provider>
+  </QueryClientProvider>
   )
 }
 

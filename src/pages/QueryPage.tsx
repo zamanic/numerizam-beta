@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useContext } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -67,7 +67,7 @@ import { askNumerizam, parseNumerizamResponse } from "../utils/askNumerizam";
 import { saveReportResults } from "../services/langGraphSaveAPI";
 import { transactionProcessingService } from "../services/transactionProcessingService";
 import { supabaseAccountingService } from "../services/supabaseAccountingService";
-import { AuthContext } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 
 // Types
 type Transaction = {
@@ -114,7 +114,7 @@ const initialTransactions: Transaction[] = [
 ];
 
 const QueryPage = () => {
-  const { user, session } = useContext(AuthContext);
+  const { user, session } = useAuth();
   const [transactions, setTransactions] =
     useState<Transaction[]>(initialTransactions);
   const [query, setQuery] = useState("");

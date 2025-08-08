@@ -213,10 +213,38 @@ export const useOCRQuery = () => {
   };
   
   return {
-    processImage: processImageMutation.mutate,
-    processPdf: processPdfMutation.mutate,
-    processText: processTextMutation.mutate,
-    saveResult: saveResultMutation.mutate,
+    processImage: (file: File) => {
+      return new Promise<OCRResult>((resolve, reject) => {
+        processImageMutation.mutate(file, {
+          onSuccess: (result) => resolve(result),
+          onError: (error) => reject(error)
+        });
+      });
+    },
+    processPdf: (file: File) => {
+      return new Promise<OCRResult>((resolve, reject) => {
+        processPdfMutation.mutate(file, {
+          onSuccess: (result) => resolve(result),
+          onError: (error) => reject(error)
+        });
+      });
+    },
+    processText: (text: string) => {
+      return new Promise<OCRResult>((resolve, reject) => {
+        processTextMutation.mutate(text, {
+          onSuccess: (result) => resolve(result),
+          onError: (error) => reject(error)
+        });
+      });
+    },
+    saveResult: (result: OCRResult) => {
+      return new Promise<any>((resolve, reject) => {
+        saveResultMutation.mutate(result, {
+          onSuccess: (transaction) => resolve(transaction),
+          onError: (error) => reject(error)
+        });
+      });
+    },
     isProcessing: processImageMutation.isPending || processPdfMutation.isPending || processTextMutation.isPending,
     isSaving: saveResultMutation.isPending,
     error: processImageMutation.error || processPdfMutation.error || processTextMutation.error || saveResultMutation.error,

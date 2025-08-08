@@ -1,10 +1,10 @@
-import { useState, useContext, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Container, Box, Typography, Button, Paper, FormControl, InputLabel, Select, MenuItem, Alert } from '@mui/material'
 import { motion } from 'framer-motion'
 
 // Context
-import { AuthContext, UserRole } from '../../context/AuthContext'
+import { useAuth, UserRole } from '../../context/AuthContext'
 
 // Components
 import LoadingSpinner from '../../components/LoadingSpinner'
@@ -23,7 +23,7 @@ const currencies = [
 ]
 
 const Onboarding = () => {
-  const { user, completeOnboarding, isLoading, isAuthenticated } = useContext(AuthContext)
+  const { user, completeOnboarding, isLoading, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   
   const [role, setRole] = useState<UserRole>('Accountant')
