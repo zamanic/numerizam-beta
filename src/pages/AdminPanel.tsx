@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
+import { toast } from 'react-toastify'
 import {
   Box,
   Typography,
@@ -60,7 +61,7 @@ import {
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import LoadingSpinner from '../components/LoadingSpinner'
-import { adminService } from '../services/adminService'
+import { adminService, AdminUser, Company, UserStats } from '../services/adminService'
 import ApprovalManagement from '../components/admin/ApprovalManagement'
 
 // Types
@@ -85,8 +86,7 @@ const mockDataModels: DataModel[] = [
   { id: 'm1', name: 'General Ledger', description: 'Core financial transactions', recordCount: 1245, lastUpdated: new Date(2023, 5, 28) },
   { id: 'm2', name: 'Calendar', description: 'Fiscal periods and date configurations', recordCount: 36, lastUpdated: new Date(2023, 5, 25) },
   { id: 'm3', name: 'Chart of Accounts', description: 'Account structure and hierarchy', recordCount: 87, lastUpdated: new Date(2023, 5, 27) },
-  { id: 'm4', name: 'Vendors', description: 'Supplier and vendor information', recordCount: 53, lastUpdated: new Date(2023, 5, 26) },
-  { id: 'm5', name: 'Customers', description: 'Client and customer records', recordCount: 128, lastUpdated: new Date(2023, 5, 28) },
+  { id: 'm4', name: 'Territory', description: 'Geographic and business territories', recordCount: 42, lastUpdated: new Date(2023, 5, 26) },
 ]
 
 const mockUsageStats: UsageStat[] = [
@@ -97,7 +97,7 @@ const mockUsageStats: UsageStat[] = [
 ]
 
 const AdminPanel = () => {
-  const { user, switchCompany } = useContext(AuthContext)
+  const { user, switchCompany } = useAuth()
   const [tabIndex, setTabIndex] = useState(0)
   const [dataModelTab, setDataModelTab] = useState(0)
   const [searchTerm, setSearchTerm] = useState('')
@@ -111,6 +111,10 @@ const AdminPanel = () => {
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [showTruncateDialog, setShowTruncateDialog] = useState(false)
+  const [tableToTruncate, setTableToTruncate] = useState<string>('')
+  const [truncateLoading, setTruncateLoading] = useState(false)
+  const [truncateError, setTruncateError] = useState<string | null>(null)
 
   // Data fetching functions
   const fetchUsers = async () => {
@@ -232,9 +236,50 @@ const AdminPanel = () => {
     }
   }
 
+  // Handle truncate table
+  const handleTruncateTable = async () => {
+    if (!tableToTruncate) return
+
+    setTruncateLoading(true)
+    setTruncateError(null)
+
+    try {
+      // Map the display name to the actual table name
+      const tableNameMap: Record<string, string> = {
+        'Calendar': 'calendar',
+        'Chart of Accounts': 'chartofaccounts',
+        'General Ledger': 'generalledger',
+        'Territory': 'territory'
+      }
+      
+      const tableName = tableNameMap[tableToTruncate]
+      if (!tableName) {
+        setTruncateError(`Table ${tableToTruncate} cannot be truncated.`)
+        return
+      }
+      
+      const { success, error } = await adminService.truncateTable(tableName)
+      
+      if (success) {
+        toast.success(`Successfully truncated ${tableToTruncate} table`)
+        setShowTruncateDialog(false)
+        setTableToTruncate('')
+        
+        // Refresh data after truncation
+        refreshData()
+      } else {
+        setTruncateError(error || 'Failed to truncate table. Please try again.')
+      }
+    } catch (error) {
+      setTruncateError(`Failed to truncate table: ${(error as Error).message}`)
+    } finally {
+      setTruncateLoading(false)
+    }
+  }
+
   // Filter companies based on search term
   const filteredCompanies = companies.filter(company =>
-    company.name.toLowerCase().includes(searchTerm.toLowerCase())
+    company.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   // Filter users based on search term
@@ -282,7 +327,7 @@ const AdminPanel = () => {
             >
               {companies.map((company) => (
                 <MenuItem key={company.id} value={company.id}>
-                  {company.name}
+                  {company.company_name}
                 </MenuItem>
               ))}
             </Select>
@@ -372,39 +417,27 @@ const AdminPanel = () => {
                   ) : (
                     filteredCompanies.map((company) => (
                       <TableRow key={company.id} hover>
-                        <TableCell>{company.name}</TableCell>
-                        <TableCell>{company.createdAt.toLocaleDateString()}</TableCell>
+                        <TableCell>{company.company_name}</TableCell>
+                        <TableCell>{new Date(company.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <Chip
-                            label={company.status}
+                            label="active"
                             size="small"
-                            color={
-                              company.status === 'active'
-                                ? 'success'
-                                : company.status === 'pending'
-                                ? 'warning'
-                                : 'error'
-                            }
+                            color="success"
                           />
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={company.plan}
+                            label="standard"
                             size="small"
-                            color={
-                              company.plan === 'premium'
-                                ? 'primary'
-                                : company.plan === 'standard'
-                                ? 'info'
-                                : 'default'
-                            }
+                            color="info"
                             variant="outlined"
                           />
                         </TableCell>
-                        <TableCell>{company.usersCount}</TableCell>
+                        <TableCell>{company.user_count || 0}</TableCell>
                         <TableCell align="right">
                           <Tooltip title="Edit">
-                            <IconButton size="small" onClick={() => alert(`Edit ${company.name}`)}>  
+                            <IconButton size="small" onClick={() => alert(`Edit ${company.company_name}`)}>  
                               <Edit fontSize="small" />
                             </IconButton>
                           </Tooltip>
@@ -415,8 +448,8 @@ const AdminPanel = () => {
                               onClick={() => {
                                 setItemToDelete({
                                   type: 'company',
-                                  id: company.id,
-                                  name: company.name,
+                                  id: company.id.toString(),
+                                  name: company.company_name,
                                 })
                                 setShowDeleteDialog(true)
                               }}
@@ -565,13 +598,27 @@ const AdminPanel = () => {
                   </Box>
 
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                    <Button
-                      variant="outlined"
-                      startIcon={<Refresh />}
-                      onClick={() => alert(`Refresh ${filteredDataModels[dataModelTab].name} data`)}
-                    >
-                      Refresh Data
-                    </Button>
+                    <Box>
+                      <Button
+                        variant="outlined"
+                        startIcon={<Refresh />}
+                        onClick={() => alert(`Refresh ${filteredDataModels[dataModelTab].name} data`)}
+                        sx={{ mr: 1 }}
+                      >
+                        Refresh Data
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        startIcon={<Delete />}
+                        onClick={() => {
+                          setTableToTruncate(filteredDataModels[dataModelTab].name)
+                          setShowTruncateDialog(true)
+                        }}
+                      >
+                        Truncate Table
+                      </Button>
+                    </Box>
                     <Box>
                       <Button
                         variant="outlined"
@@ -772,6 +819,45 @@ const AdminPanel = () => {
             onClick={handleDeleteConfirm}
           >
             Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Truncate Table Confirmation Dialog */}
+      <Dialog open={showTruncateDialog} onClose={() => !truncateLoading && setShowTruncateDialog(false)}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center' }}>
+          <Warning color="error" sx={{ mr: 1 }} />
+          Confirm Table Truncation
+        </DialogTitle>
+        <DialogContent>
+          {truncateError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {truncateError}
+            </Alert>
+          )}
+          <Typography>
+            Are you sure you want to truncate the <strong>{tableToTruncate}</strong> table?
+          </Typography>
+          <Typography color="error" sx={{ mt: 1, fontWeight: 'bold' }}>
+            This will permanently delete ALL records in this table and cannot be undone!
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            startIcon={<Close />}
+            onClick={() => setShowTruncateDialog(false)}
+            disabled={truncateLoading}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            startIcon={truncateLoading ? <LoadingSpinner type="circular" size="small" /> : <Delete />}
+            onClick={handleTruncateTable}
+            disabled={truncateLoading}
+          >
+            {truncateLoading ? 'Truncating...' : 'Truncate Table'}
           </Button>
         </DialogActions>
       </Dialog>

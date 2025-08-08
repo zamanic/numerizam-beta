@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react'
+import { useState } from 'react'
 import {
   Dialog,
   DialogTitle,
@@ -18,7 +18,7 @@ import {
 } from '@mui/material'
 import { Send, Business, Person, Description } from '@mui/icons-material'
 import { motion } from 'framer-motion'
-import { AuthContext } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContext'
 import LoadingSpinner from './LoadingSpinner'
 import { approvalService } from '../services/approvalService'
 
@@ -29,7 +29,7 @@ interface ApprovalRequestFormProps {
 }
 
 const ApprovalRequestForm = ({ open, onClose, onSuccess }: ApprovalRequestFormProps) => {
-  const { user } = useContext(AuthContext)
+  const { user } = useAuth()
   const [requestedRole, setRequestedRole] = useState<'Accountant' | 'Auditor' | 'Admin'>('Accountant')
   const [businessJustification, setBusinessJustification] = useState('')
   const [experience, setExperience] = useState('')

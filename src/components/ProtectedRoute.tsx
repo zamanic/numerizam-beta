@@ -1,6 +1,5 @@
-import { useContext } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { AuthContext } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContext'
 
 export type UserRole = 'Admin' | 'Accountant' | 'Viewer' | 'Auditor' | 'Investor'
 
@@ -15,7 +14,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowedRoles = [], 
   requiresAdmin = false 
 }) => {
-  const { user, initialLoading, session } = useContext(AuthContext)
+  const { user, initialLoading, session } = useAuth()
   const location = useLocation()
 
   // Show loading while checking authentication

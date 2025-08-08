@@ -1,7 +1,29 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
 
 const Unauthorized = () => {
+  const navigate = useNavigate()
+  const [countdown, setCountdown] = useState(5)
+
+  useEffect(() => {
+    // Automatically redirect to root page after 5 seconds
+    const redirectTimer = setTimeout(() => {
+      navigate('/')
+    }, 5000)
+
+    // Countdown timer
+    const countdownInterval = setInterval(() => {
+      setCountdown(prev => prev - 1)
+    }, 1000)
+
+    // Clean up timers on component unmount
+    return () => {
+      clearTimeout(redirectTimer)
+      clearInterval(countdownInterval)
+    }
+  }, [navigate])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 flex items-center justify-center p-4">
       <motion.div
@@ -20,6 +42,9 @@ const Unauthorized = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-3">Access Denied</h1>
           <p className="text-gray-600 mb-6">
             You don't have permission to access this page. Please contact your administrator if you believe this is an error.
+          </p>
+          <p className="text-sm text-amber-600 mb-4">
+            Redirecting to home page in {countdown} seconds...
           </p>
           
           <div className="space-y-3">

@@ -5,13 +5,13 @@ import { Visibility, VisibilityOff, Brightness4, Brightness7 } from '@mui/icons-
 import { motion } from 'framer-motion'
 
 // Context
-import { AuthContext } from '../../context/AuthContext'
+import { useAuth } from '../../context/AuthContext'
 import { ThemeContext } from '../../context/ThemeContext'
 import { numerizamAuthService } from '../../services/numerizamAuthService'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
 const Login = () => {
-  const { login, isLoading } = useContext(AuthContext)
+  const { login, isLoading } = useAuth()
   const { darkMode, toggleTheme } = useContext(ThemeContext)
   const location = useLocation()
   

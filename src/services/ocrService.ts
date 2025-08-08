@@ -107,8 +107,20 @@ const sampleReceipts = [
   }
 ];
 
-// Helper function to simulate API delay
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// Helper function to simulate API delay with timeout
+const delayWithTimeout = (ms: number, timeoutMs: number = 10000) => {
+  return new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      clearTimeout(timeout);
+      reject(new Error('Operation timed out'));
+    }, timeoutMs);
+    
+    setTimeout(() => {
+      clearTimeout(timeout);
+      resolve();
+    }, ms);
+  });
+};
 
 // OCR service
 export const ocrService = {
@@ -125,56 +137,62 @@ export const ocrService = {
       progress: 0
     };
     
-    // Simulate upload progress
-    for (let i = 0; i <= 100; i += 10) {
-      result.progress = i;
-      await delay(100);
+    try {
+      // Simulate upload progress
+      for (let i = 0; i <= 100; i += 10) {
+        result.progress = i;
+        await delayWithTimeout(100);
+      }
+      
+      // OCR stage
+      result.stage = 'ocr';
+      result.progress = 0;
+      
+      // Simulate OCR progress
+      for (let i = 0; i <= 100; i += 5) {
+        result.progress = i;
+        await delayWithTimeout(50);
+      }
+      
+      // Parsing stage
+      result.stage = 'parsing';
+      result.progress = 0;
+      
+      // Simulate parsing progress
+      for (let i = 0; i <= 100; i += 10) {
+        result.progress = i;
+        await delayWithTimeout(30);
+      }
+      
+      // In a real app, we would send the file to an OCR API
+      // For this mock, we'll randomly select one of our sample receipts
+      const randomIndex = Math.floor(Math.random() * sampleReceipts.length);
+      const sampleReceipt = sampleReceipts[randomIndex];
+      
+      result.text = sampleReceipt.text;
+      result.data = sampleReceipt.data;
+      
+      // Duplicate check stage
+      result.stage = 'duplicate-check';
+      result.progress = 0;
+      
+      // Simulate duplicate check progress
+      for (let i = 0; i <= 100; i += 20) {
+        result.progress = i;
+        await delayWithTimeout(100);
+      }
+      
+      // Complete stage
+      result.stage = 'complete';
+      result.progress = 100;
+      result.success = true;
+      
+      return result;
+    } catch (error) {
+      result.stage = 'error';
+      result.error = error instanceof Error ? error.message : 'An unknown error occurred';
+      throw error;
     }
-    
-    // OCR stage
-    result.stage = 'ocr';
-    result.progress = 0;
-    
-    // Simulate OCR progress
-    for (let i = 0; i <= 100; i += 5) {
-      result.progress = i;
-      await delay(50);
-    }
-    
-    // Parsing stage
-    result.stage = 'parsing';
-    result.progress = 0;
-    
-    // Simulate parsing progress
-    for (let i = 0; i <= 100; i += 10) {
-      result.progress = i;
-      await delay(30);
-    }
-    
-    // In a real app, we would send the file to an OCR API
-    // For this mock, we'll randomly select one of our sample receipts
-    const randomIndex = Math.floor(Math.random() * sampleReceipts.length);
-    const sampleReceipt = sampleReceipts[randomIndex];
-    
-    result.text = sampleReceipt.text;
-    result.data = sampleReceipt.data;
-    
-    // Duplicate check stage
-    result.stage = 'duplicate-check';
-    result.progress = 0;
-    
-    // Simulate duplicate check progress
-    for (let i = 0; i <= 100; i += 20) {
-      result.progress = i;
-      await delay(100);
-    }
-    
-    // Complete stage
-    result.stage = 'complete';
-    result.progress = 100;
-    result.success = true;
-    
-    return result;
   },
   
   /**
@@ -190,56 +208,62 @@ export const ocrService = {
       progress: 0
     };
     
-    // Simulate upload progress
-    for (let i = 0; i <= 100; i += 10) {
-      result.progress = i;
-      await delay(100);
+    try {
+      // Simulate upload progress
+      for (let i = 0; i <= 100; i += 10) {
+        result.progress = i;
+        await delayWithTimeout(100);
+      }
+      
+      // OCR stage
+      result.stage = 'ocr';
+      result.progress = 0;
+      
+      // Simulate OCR progress
+      for (let i = 0; i <= 100; i += 5) {
+        result.progress = i;
+        await delayWithTimeout(70);
+      }
+      
+      // Parsing stage
+      result.stage = 'parsing';
+      result.progress = 0;
+      
+      // Simulate parsing progress
+      for (let i = 0; i <= 100; i += 10) {
+        result.progress = i;
+        await delayWithTimeout(50);
+      }
+      
+      // In a real app, we would send the file to an OCR API
+      // For this mock, we'll randomly select one of our sample receipts
+      const randomIndex = Math.floor(Math.random() * sampleReceipts.length);
+      const sampleReceipt = sampleReceipts[randomIndex];
+      
+      result.text = sampleReceipt.text;
+      result.data = sampleReceipt.data;
+      
+      // Duplicate check stage
+      result.stage = 'duplicate-check';
+      result.progress = 0;
+      
+      // Simulate duplicate check progress
+      for (let i = 0; i <= 100; i += 20) {
+        result.progress = i;
+        await delayWithTimeout(100);
+      }
+      
+      // Complete stage
+      result.stage = 'complete';
+      result.progress = 100;
+      result.success = true;
+      
+      return result;
+    } catch (error) {
+      result.stage = 'error';
+      result.error = error instanceof Error ? error.message : 'An unknown error occurred';
+      throw error;
     }
-    
-    // OCR stage
-    result.stage = 'ocr';
-    result.progress = 0;
-    
-    // Simulate OCR progress
-    for (let i = 0; i <= 100; i += 5) {
-      result.progress = i;
-      await delay(70);
-    }
-    
-    // Parsing stage
-    result.stage = 'parsing';
-    result.progress = 0;
-    
-    // Simulate parsing progress
-    for (let i = 0; i <= 100; i += 10) {
-      result.progress = i;
-      await delay(50);
-    }
-    
-    // In a real app, we would send the file to an OCR API
-    // For this mock, we'll randomly select one of our sample receipts
-    const randomIndex = Math.floor(Math.random() * sampleReceipts.length);
-    const sampleReceipt = sampleReceipts[randomIndex];
-    
-    result.text = sampleReceipt.text;
-    result.data = sampleReceipt.data;
-    
-    // Duplicate check stage
-    result.stage = 'duplicate-check';
-    result.progress = 0;
-    
-    // Simulate duplicate check progress
-    for (let i = 0; i <= 100; i += 20) {
-      result.progress = i;
-      await delay(100);
-    }
-    
-    // Complete stage
-    result.stage = 'complete';
-    result.progress = 100;
-    result.success = true;
-    
-    return result;
   },
   
   /**
@@ -255,135 +279,186 @@ export const ocrService = {
       progress: 0
     };
     
-    // Simulate parsing progress
-    for (let i = 0; i <= 100; i += 10) {
-      result.progress = i;
-      await delay(50);
-    }
-    
-    // In a real app, we would send the text to an NLP/OCR API
-    // For this mock, we'll check if the text contains keywords from our samples
-    let matchedReceipt = null;
-    
-    for (const receipt of sampleReceipts) {
-      if (receipt.text.includes(text) || text.includes(receipt.data.vendor || '')) {
-        matchedReceipt = receipt;
-        break;
-      }
-    }
-    
-    if (matchedReceipt) {
-      result.data = matchedReceipt.data;
-      
-      // Duplicate check stage
-      result.stage = 'duplicate-check';
-      result.progress = 0;
-      
-      // Simulate duplicate check progress
-      for (let i = 0; i <= 100; i += 20) {
+    try {
+      // Simulate parsing progress
+      for (let i = 0; i <= 100; i += 10) {
         result.progress = i;
-        await delay(100);
+        await delayWithTimeout(50);
       }
       
-      // Complete stage
+      // In a real app, we would send the text to an NLP/OCR API
+      // For this mock, we'll check if the text contains keywords from our samples
+      let matchedReceipt = null;
+      
+      for (const receipt of sampleReceipts) {
+        if (receipt.text.includes(text) || text.includes(receipt.data.vendor || '')) {
+          matchedReceipt = receipt;
+          break;
+        }
+      }
+      
+      if (matchedReceipt) {
+        result.data = matchedReceipt.data;
+        
+        // Duplicate check stage
+        result.stage = 'duplicate-check';
+        result.progress = 0;
+        
+        // Simulate duplicate check progress
+        for (let i = 0; i <= 100; i += 20) {
+          result.progress = i;
+          await delayWithTimeout(100);
+        }
+        
+        // Complete stage
+        result.stage = 'complete';
+        result.progress = 100;
+        result.success = true;
+        
+        return result;
+      }
+      
+      // If no match, use the first sample receipt as a fallback
+      result.data = sampleReceipts[0].data;
       result.stage = 'complete';
       result.progress = 100;
       result.success = true;
       
       return result;
+    } catch (error) {
+      result.stage = 'error';
+      result.error = error instanceof Error ? error.message : 'An unknown error occurred';
+      throw error;
     }
-    
-    // If no match, return a generic structure with error
-    result.stage = 'error';
-    result.error = 'Could not extract structured data from the provided text.';
-    return result;
   },
-  
+
   /**
    * Validate and correct OCR results
    * @param result The OCR result to validate
-   * @returns Validated and potentially corrected OCR result
+   * @returns Validated OCR result
    */
   validateResult: async (result: OCRResult): Promise<OCRResult> => {
-    // Simulate processing delay
-    await delay(800);
-    
-    // In a real app, we would apply validation rules and corrections
-    // For this mock, we'll just return the result as is with stage information
-    return {
-      ...result,
-      stage: 'complete',
-      progress: 100
-    };
+    try {
+      // Simulate validation delay
+      await delayWithTimeout(500);
+      
+      // In a real app, we would validate the data and correct any issues
+      // For this mock, we'll just return the result as is
+      return {
+        ...result,
+        success: true
+      };
+    } catch (error) {
+      return {
+        ...result,
+        success: false,
+        error: error instanceof Error ? error.message : 'Validation failed'
+      };
+    }
   },
   
   /**
-   * Convert OCR result to a transaction
+   * Convert OCR result to transaction data
    * @param result The OCR result to convert
-   * @returns Transaction data that can be saved to the system
+   * @returns Transaction data
    */
-  convertToTransaction: async (result: OCRResult): Promise<any> => {
-    // Simulate processing delay
-    await delay(500);
-    
-    if (!result.success || !result.data) {
-      throw new Error('Cannot convert invalid OCR result to transaction');
-    }
-    
-    // In a real app, we would map the OCR data to our transaction model
-    return {
-      date: result.data.date ? new Date(result.data.date) : new Date(),
-      description: `Payment to ${result.data.vendor}`,
-      amount: result.data.total || 0,
-      type: 'debit', // Assuming it's an expense
-      account: 'Accounts Payable',
-      category: 'Expense',
-      metadata: {
-        vendor: result.data.vendor,
-        invoiceNumber: result.data.invoiceNumber,
-        items: result.data.items,
-        taxAmount: result.data.taxAmount,
-        confidence: result.data.confidence,
-        possibleDuplicates: result.data.possibleDuplicates
+  convertToTransaction: (result: OCRResult): Transaction => {
+    try {
+      if (!result.data) {
+        throw new Error('No data available to convert to transaction');
       }
-    };
+      
+      const { vendor, date, total, items, tax, currency, invoiceNumber } = result.data;
+      
+      if (!vendor || !date || !total) {
+        throw new Error('Missing required transaction data');
+      }
+      
+      return {
+        id: uuidv4(),
+        date: date || new Date().toISOString(),
+        vendor: vendor || 'Unknown Vendor',
+        total: parseFloat(total) || 0,
+        currency: currency || 'USD',
+        items: items?.map(item => ({
+          id: uuidv4(),
+          description: item.description || 'Unknown Item',
+          amount: parseFloat(item.amount) || 0,
+          quantity: item.quantity || 1
+        })) || [],
+        tax: tax ? parseFloat(tax) : 0,
+        invoiceNumber: invoiceNumber || '',
+        notes: '',
+        category: '',
+        paymentMethod: '',
+        status: 'pending',
+        attachments: []
+      };
+    } catch (error) {
+      console.error('Error converting OCR result to transaction:', error);
+      // Return a minimal valid transaction to prevent UI errors
+      return {
+        id: uuidv4(),
+        date: new Date().toISOString(),
+        vendor: 'Error in OCR Processing',
+        total: 0,
+        currency: 'USD',
+        items: [],
+        tax: 0,
+        invoiceNumber: '',
+        notes: error instanceof Error ? error.message : 'Unknown error in OCR processing',
+        category: '',
+        paymentMethod: '',
+        status: 'pending',
+        attachments: []
+      };
+    }
   },
   
   /**
    * Check for duplicate transactions
-   * @param data The transaction data to check for duplicates
-   * @returns Array of potential duplicate transactions
+   * @param result The OCR result to check for duplicates
+   * @returns OCR result with possible duplicates
    */
-  checkDuplicates: async (data: any): Promise<any[]> => {
-    // Simulate processing delay
-    await delay(1000);
-    
-    // In a real app, we would query the database for similar transactions
-    // For this mock, we'll return some sample duplicates
-    if (data.vendor && data.vendor.includes('ACME')) {
-      return [
-        {
-          id: 'dup1',
-          date: '2023-06-14',
-          vendor: 'ACME OFFICE SUPPLIES',
-          amount: 179.32,
-          similarity: 95
-        }
-      ];
+  checkDuplicates: async (result: OCRResult): Promise<OCRResult> => {
+    try {
+      if (!result.data || !result.data.vendor) {
+        return result;
+      }
+      
+      // Simulate duplicate check delay
+      await delayWithTimeout(800);
+      
+      // In a real app, we would check against existing transactions in the database
+      // For this mock, we'll randomly decide if there are duplicates
+      const hasDuplicates = Math.random() > 0.7;
+      
+      if (hasDuplicates) {
+        // Create a fake duplicate based on the vendor name
+        const duplicate = {
+          id: uuidv4(),
+          date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week ago
+          vendor: result.data.vendor,
+          total: result.data.total ? parseFloat(result.data.total) : 0,
+          similarity: Math.floor(Math.random() * 30 + 70) // 70-99% similarity
+        };
+        
+        return {
+          ...result,
+          data: {
+            ...result.data,
+            possibleDuplicates: [duplicate]
+          }
+        };
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error checking for duplicates:', error);
+      return {
+        ...result,
+        error: error instanceof Error ? error.message : 'Error checking for duplicates'
+      };
     }
-    
-    if (data.vendor && data.vendor.includes('CITY')) {
-      return [
-        {
-          id: 'dup2',
-          date: '2023-05-20',
-          vendor: 'CITY UTILITIES',
-          amount: 278.25,
-          similarity: 85
-        }
-      ];
-    }
-    
-    return [];
   }
 };
