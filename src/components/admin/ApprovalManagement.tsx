@@ -69,12 +69,13 @@ const ApprovalManagement: React.FC = () => {
   const [requests, setRequests] = useState<ApprovalRequest[]>([])
   const [notifications, setNotifications] = useState<ApprovalNotification[]>([])
   const [loading, setLoading] = useState(true)
+  const [unreadCount, setUnreadCount] = useState(0)
   const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [actionType, setActionType] = useState<'approve' | 'reject' | 'view'>('view')
   const [adminNotes, setAdminNotes] = useState('')
   const [processing, setProcessing] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(0)
+  const [tablesExist, setTablesExist] = useState(false)
 
   useEffect(() => {
     if (user?.email) {
@@ -90,11 +91,16 @@ const ApprovalManagement: React.FC = () => {
       const { requests: allRequests, error } = await approvalService.getAllApprovalRequests()
       if (error) {
         toast.error(`Failed to load approval requests: ${error}`)
+        if (error.includes('does not exist')) {
+          setTablesExist(false)
+        }
       } else {
         setRequests(allRequests)
+        setTablesExist(true)
       }
     } catch (error) {
       toast.error('Failed to load approval requests')
+      setTablesExist(false)
     } finally {
       setLoading(false)
     }
@@ -107,11 +113,16 @@ const ApprovalManagement: React.FC = () => {
       const { notifications: userNotifications, error } = await approvalService.getAdminNotifications(user.email)
       if (error) {
         console.warn('Failed to load notifications:', error)
+        if (error.includes('does not exist')) {
+          setTablesExist(false)
+        }
       } else {
         setNotifications(userNotifications)
+        setTablesExist(true)
       }
     } catch (error) {
-      console.warn('Failed to load notifications')
+      console.warn('Failed to load notifications:', error)
+      setTablesExist(false)
     }
   }
 
@@ -131,11 +142,14 @@ const ApprovalManagement: React.FC = () => {
   }
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setCurrentTab(newValue)
-    if (newValue === 1 && user?.email) {
-      // Mark notifications as read when viewing notifications tab
-      approvalService.markNotificationsAsRead(user.email)
-      setUnreadCount(0)
+    // Ensure the tab value is valid (0 or 1)
+    if (newValue >= 0 && newValue <= 1) {
+      setCurrentTab(newValue)
+      if (newValue === 1 && user?.email && tablesExist) {
+        // Mark notifications as read when viewing notifications tab
+        approvalService.markNotificationsAsRead(user.email)
+        setUnreadCount(0)
+      }
     }
   }
 
@@ -214,6 +228,27 @@ const ApprovalManagement: React.FC = () => {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <Typography>Loading approval requests...</Typography>
+      </Box>
+    )
+  }
+
+  if (!tablesExist) {
+    return (
+      <Box>
+        <Typography variant="h4" gutterBottom>
+          Approval Management
+        </Typography>
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Database Setup Required
+          </Typography>
+          <Typography>
+            The approval system tables are not set up in your database. Please run the approval system setup script to create the required tables.
+          </Typography>
+          <Typography sx={{ mt: 1 }}>
+            Required tables: <code>approval_requests</code>, <code>approval_notifications</code>
+          </Typography>
+        </Alert>
       </Box>
     )
   }

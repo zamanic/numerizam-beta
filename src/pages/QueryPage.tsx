@@ -129,6 +129,8 @@ const QueryPage = () => {
   );
   const [error, setError] = useState("");
   const [reportData, setReportData] = useState<any>(null);
+  const [pendingTransactionData, setPendingTransactionData] = useState<any>(null);
+  const [showPendingBox, setShowPendingBox] = useState(false);
   const queryInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Enhanced state variables for new UI
@@ -247,17 +249,26 @@ const QueryPage = () => {
     },
   ]);
 
+  // State to hold all dialog data together
+  const [dialogData, setDialogData] = useState({
+    transactions: enhancedTransactions,
+    companyInfo,
+    territoryDetails,
+    calendarInfo,
+    chartOfAccounts,
+  });
+
   const [aiJsonOutput, setAiJsonOutput] = useState<any>(null);
   const [transactionPayload, setTransactionPayload] = useState<any>(null);
 
   // Update chart of accounts and general ledger when enhanced transactions change
   useEffect(() => {
-    if (enhancedTransactions.length > 0) {
+    if (dialogData.transactions.length > 0) {
       // Extract unique accounts from enhanced transactions
       const accountsMap = new Map();
       const ledgerEntries: any[] = [];
 
-      enhancedTransactions.forEach((transaction, index) => {
+      dialogData.transactions.forEach((transaction, index) => {
         // Extract account code from account string (e.g., "1000 - Cash" -> "1000")
         const accountMatch = transaction.account.match(/^(\d+)/);
         const accountCode = accountMatch ? accountMatch[1] : "1000";
@@ -328,7 +339,7 @@ const QueryPage = () => {
       // Update general ledger entries
       setGeneralLedgerEntries(ledgerEntries);
     }
-  }, [enhancedTransactions]);
+  }, [dialogData.transactions]);
 
   // Check if this is demo mode
   const isDemoMode = window.location.pathname === "/demo";
@@ -424,6 +435,7 @@ const QueryPage = () => {
         fiscalYear: String(cal.year),
         daysRemaining: 30,
       };
+      console.log('QueryPage: Setting calendarInfo:', updatedCalendarInfo);
       setCalendarInfo(updatedCalendarInfo);
 
       // 2. Territory
@@ -433,6 +445,7 @@ const QueryPage = () => {
         taxRate: 8.5,
         regulations: ["SOX", "GAAP"],
       };
+      console.log('QueryPage: Setting territoryDetails:', updatedTerritoryDetails);
       setTerritoryDetails(updatedTerritoryDetails);
 
       // 3. Company
@@ -442,20 +455,23 @@ const QueryPage = () => {
         taxId: "TAX-123456789",
         fiscalYear: String(cal.year),
       };
+      console.log('QueryPage: Setting companyInfo:', updatedCompanyInfo);
       setCompanyInfo(updatedCompanyInfo);
 
       // 4. Chart of Accounts (array -> dialog state)
       const updatedChartOfAccounts = {
-        accounts: p.chartofaccounts.map((c: any) => ({
-          code: String(c.account_key),
+        accounts: p.chartofaccounts.map((c: any, idx: number) => ({
+          code: `${c.account_key}-${idx}`, // Create unique key using account_key and index
           name: c.account,
           type: c.class,
           balance: 0, // will be calculated by existing useEffect
           report: c.report,
           subclass: c.subclass,
           isActive: true,
+          originalAccountKey: c.account_key, // Keep original account key for reference
         })),
       };
+      console.log('QueryPage: Setting chartOfAccounts:', updatedChartOfAccounts);
       setChartOfAccounts(updatedChartOfAccounts);
 
       // 5. General Ledger (array -> dialog state)
@@ -469,6 +485,7 @@ const QueryPage = () => {
         reference: `REF-${String(idx + 1).padStart(3, "0")}`,
         status: "Active",
       }));
+      console.log('QueryPage: Setting generalLedgerEntries:', ledgerRows);
       setGeneralLedgerEntries(ledgerRows);
 
       // 6. Enhanced transactions (for the dialog table)
@@ -484,6 +501,7 @@ const QueryPage = () => {
         isValidated: false,
         errors: [],
       }));
+      console.log('QueryPage: Setting enhancedTransactions:', enhanced);
       setEnhancedTransactions(enhanced);
 
       // 7. Legacy journal entry (backward compatibility)
@@ -497,13 +515,37 @@ const QueryPage = () => {
           credit: gl.type === "Credit" ? gl.amount : undefined,
         })),
       };
+      console.log('QueryPage: Setting currentJournalEntry:', journalEntry);
       setCurrentJournalEntry(journalEntry);
 
       setTransactionPayload(p); // keep raw payload for confirm step
       setAiJsonOutput(jsonData);
 
+      // Update dialog data atomically with all the new values
+      const newDialogData = {
+        transactions: enhanced,
+        companyInfo: updatedCompanyInfo,
+        territoryDetails: updatedTerritoryDetails,
+        calendarInfo: updatedCalendarInfo,
+        chartOfAccounts: updatedChartOfAccounts,
+      };
+      
+      console.log('QueryPage: Setting dialog data:', newDialogData);
+      setDialogData(newDialogData);
+
+      // Clear any pending data since we have new data
+      setPendingTransactionData(null);
+      setShowPendingBox(false);
+
       // Use setTimeout to ensure state updates are applied before showing dialog
       setTimeout(() => {
+        console.log('QueryPage: Opening dialog with updated values:', {
+          enhanced,
+          updatedCompanyInfo,
+          updatedTerritoryDetails,
+          updatedCalendarInfo,
+          updatedChartOfAccounts
+        });
         setShowConfirmDialog(true);
       }, 100);
     } catch (err: any) {
@@ -538,7 +580,7 @@ const QueryPage = () => {
     try {
       if (isDemoMode) {
         // demo: just push to local list
-        const newTx: Transaction[] = enhancedTransactions.map((t, idx) => ({
+        const newTx: Transaction[] = dialogData.transactions.map((t, idx) => ({
           id: `demo-t${transactions.length + idx + 1}`,
           date: new Date(t.date),
           description: t.description,
@@ -551,10 +593,43 @@ const QueryPage = () => {
         await new Promise((r) => setTimeout(r, 1000));
       } else {
         // real backend
-        const resp = await fetch("http://localhost:8000/api/transactions/", {
+        // Transform the payload to match backend expectations
+        const backendPayload = {
+          company_data: {
+            company_name: transactionPayload.companies?.company_name || "Default Company"
+          },
+          territory_data: transactionPayload.territory ? {
+            Country: transactionPayload.territory.country || "Bangladesh",
+            Region: transactionPayload.territory.region || "Asia"
+          } : undefined,
+          calendar_data: {
+            Date: transactionPayload.calendar.date,
+            Year: transactionPayload.calendar.year,
+            Quarter: transactionPayload.calendar.quarter,
+            Month: transactionPayload.calendar.month,
+            Day: transactionPayload.calendar.day
+          },
+          chart_of_accounts_data: transactionPayload.chartofaccounts.map((account: any) => ({
+            Account_key: account.account_key,
+            Report: account.report,
+            Class: account.class,
+            SubClass: account.subclass,
+            SubClass2: account.subclass2,
+            Account: account.account,
+            SubAccount: account.subaccount
+          })),
+          general_ledger_entries: transactionPayload.generalledger.map((entry: any) => ({
+            Account_key: entry.account_key,
+            Amount: entry.amount,
+            Type: entry.type,
+            Details: entry.details
+          }))
+        };
+
+        const resp = await fetch("http://localhost:8000/api/transactions/process/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transaction_payload: transactionPayload }),
+          body: JSON.stringify(backendPayload),
         });
         if (!resp.ok) {
           const errData = await resp.json();
@@ -564,7 +639,7 @@ const QueryPage = () => {
         alert(`Success: ${result.message}`);
 
         // also push into local list for instant UI update
-        const newTx: Transaction[] = enhancedTransactions.map((t, idx) => ({
+        const newTx: Transaction[] = dialogData.transactions.map((t, idx) => ({
           id: `t${transactions.length + idx + 1}`,
           date: new Date(t.date),
           description: t.description,
@@ -575,6 +650,10 @@ const QueryPage = () => {
         }));
         setTransactions((prev) => [...newTx, ...prev]);
       }
+      
+      // Clear pending data after successful confirmation
+      setPendingTransactionData(null);
+      setShowPendingBox(false);
     } catch (err: any) {
       console.error(err);
       setError(`Error processing transactions: ${err.message}`);
@@ -1000,6 +1079,47 @@ const QueryPage = () => {
 
               <Box sx={{ flexGrow: 1, mb: 2, overflow: "auto" }}>
                 {/* Example queries */}
+                {/* Pending Transactions Box */}
+                {showPendingBox && pendingTransactionData && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                  >
+                    <Alert
+                      severity="info"
+                      sx={{ mb: 2 }}
+                      action={
+                        <Box>
+                          <Button
+                            size="small"
+                            onClick={() => {
+                              setDialogData(pendingTransactionData);
+                              setShowConfirmDialog(true);
+                              setShowPendingBox(false);
+                            }}
+                          >
+                            Review
+                          </Button>
+                          <Button
+                            size="small"
+                            onClick={() => {
+                              setPendingTransactionData(null);
+                              setShowPendingBox(false);
+                            }}
+                          >
+                            Dismiss
+                          </Button>
+                        </Box>
+                      }
+                    >
+                      <Typography variant="body2">
+                        You have pending transactions ready for review.
+                      </Typography>
+                    </Alert>
+                  </motion.div>
+                )}
+
                 <Box
                   sx={{
                     p: 2,
@@ -1022,11 +1142,11 @@ const QueryPage = () => {
                       mt: 1,
                     }}
                     onClick={() =>
-                      setQuery("Record a sale of $500 for consulting services")
+                      setQuery("Record a sale of $5,000 for ABC Corp consulting services on June 15, 2024 in the United States")
                     }
                   >
                     <Typography variant="body2">
-                      "Record a sale of $500 for consulting services"
+                      "Record a sale of $5,000 for ABC Corp consulting services on June 15, 2024 in the United States"
                     </Typography>
                   </Box>
                   <Box
@@ -1040,11 +1160,47 @@ const QueryPage = () => {
                       mt: 1,
                     }}
                     onClick={() =>
-                      setQuery("Enter an office supplies expense of $250")
+                      setQuery("Enter office supplies expense of $250.75 for TechStart Inc on March 10, 2024 in Canada")
                     }
                   >
                     <Typography variant="body2">
-                      "Enter an office supplies expense of $250"
+                      "Enter office supplies expense of $250.75 for TechStart Inc on March 10, 2024 in Canada"
+                    </Typography>
+                  </Box>
+                  <Box
+                    component={motion.div}
+                    whileHover={{ scale: 1.02 }}
+                    sx={{
+                      p: 1,
+                      cursor: "pointer",
+                      "&:hover": { bgcolor: "action.hover" },
+                      borderRadius: 1,
+                      mt: 1,
+                    }}
+                    onClick={() =>
+                      setQuery("Record equipment purchase of $3,200 for Global Solutions Ltd on January 22, 2024 in the United Kingdom")
+                    }
+                  >
+                    <Typography variant="body2">
+                      "Record equipment purchase of $3,200 for Global Solutions Ltd on January 22, 2024 in the United Kingdom"
+                    </Typography>
+                  </Box>
+                  <Box
+                    component={motion.div}
+                    whileHover={{ scale: 1.02 }}
+                    sx={{
+                      p: 1,
+                      cursor: "pointer",
+                      "&:hover": { bgcolor: "action.hover" },
+                      borderRadius: 1,
+                      mt: 1,
+                    }}
+                    onClick={() =>
+                      setQuery("Enter rent payment of $1,800 for Innovate Co on February 1, 2024 in Australia")
+                    }
+                  >
+                    <Typography variant="body2">
+                      "Enter rent payment of $1,800 for Innovate Co on February 1, 2024 in Australia"
                     </Typography>
                   </Box>
                 </Box>
@@ -1269,7 +1425,10 @@ const QueryPage = () => {
           console.log("Dialog onClose triggered, isProcessing:", isProcessing);
           // Only close if not currently processing to prevent accidental closure
           if (!isProcessing) {
-            console.log("Closing dialog and clearing state");
+            console.log("Closing dialog and saving pending data");
+            // Save current dialog data as pending
+            setPendingTransactionData(dialogData);
+            setShowPendingBox(true);
             setShowConfirmDialog(false);
             // Don't clear currentJournalEntry and expandedCard immediately to prevent black screen
             setTimeout(() => {
@@ -1280,11 +1439,11 @@ const QueryPage = () => {
             console.log("Dialog close prevented due to processing state");
           }
         }}
-        transactions={enhancedTransactions}
-        companyInfo={companyInfo}
-        territoryDetails={territoryDetails}
-        calendarInfo={calendarInfo}
-        chartOfAccounts={chartOfAccounts}
+        transactions={dialogData.transactions}
+        companyInfo={dialogData.companyInfo}
+        territoryDetails={dialogData.territoryDetails}
+        calendarInfo={dialogData.calendarInfo}
+        chartOfAccounts={dialogData.chartOfAccounts}
         onConfirm={handleConfirmEntry}
         isProcessing={isProcessing}
         isDemoMode={isDemoMode}

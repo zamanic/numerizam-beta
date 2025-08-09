@@ -462,6 +462,264 @@ export class SupabaseAccountingService {
     }
   }
 
+  // Income Statement Functions
+
+  /**
+   * Get companies for dropdown selection
+   */
+  async getCompanies(): Promise<{ companies: Company[] | null; error: string | null }> {
+    try {
+      const { data: companies, error } = await supabase
+        .from('companies')
+        .select('*')
+        .order('company_name');
+
+      if (error) {
+        return { companies: null, error: error.message };
+      }
+
+      return { companies, error: null };
+    } catch (error) {
+      return { companies: null, error: (error as Error).message };
+    }
+  }
+
+  /**
+   * Get available years from the database
+   */
+  async getAvailableYears(): Promise<{ years: number[] | null; error: string | null }> {
+    try {
+      const { data, error } = await supabase
+        .from('generalledger')
+        .select('date')
+        .not('date', 'is', null);
+
+      if (error) {
+        return { years: null, error: error.message };
+      }
+
+      if (!data || data.length === 0) {
+        return { years: [], error: null };
+      }
+
+      // Extract unique years from the dates
+      const years = [...new Set(data.map(row => new Date(row.date).getFullYear()))]
+        .filter(year => !isNaN(year))
+        .sort((a, b) => a - b);
+
+      return { years, error: null };
+    } catch (error) {
+      return { years: null, error: (error as Error).message };
+    }
+  }
+
+  /**
+   * Get available countries from the database
+   */
+  async getAvailableCountries(): Promise<{ countries: string[] | null; error: string | null }> {
+    try {
+      const { data, error } = await supabase
+        .from('territory')
+        .select('country')
+        .not('country', 'is', null);
+
+      if (error) {
+        return { countries: null, error: error.message };
+      }
+
+      if (!data || data.length === 0) {
+        return { countries: [], error: null };
+      }
+
+      // Extract unique countries
+      const countries = [...new Set(data.map(row => row.country))]
+        .filter(country => country && country.trim() !== '')
+        .sort();
+
+      return { countries, error: null };
+    } catch (error) {
+      return { countries: null, error: (error as Error).message };
+    }
+  }
+
+  /**
+   * Generate Income Statement data with country filter
+   */
+  async generateIncomeStatement(
+    companyName: string,
+    startDate: string,
+    endDate: string,
+    years: number[],
+    country?: string
+  ): Promise<{ data: any[] | null; error: string | null }> {
+    try {
+      // First, get the company ID
+      const { data: company, error: companyError } = await supabase
+        .from('companies')
+        .select('company_id')
+        .eq('company_name', companyName)
+        .single();
+
+      if (companyError || !company) {
+        return { data: null, error: companyError?.message || 'Company not found' };
+      }
+
+      // Build the query with country filter if specified
+      let query = supabase
+        .from('generalledger')
+        .select(`
+          account_key,
+          date,
+          amount,
+          chartofaccounts!inner (
+            report,
+            class,
+            account
+          ),
+          territory!inner (
+            country
+          )
+        `)
+        .eq('company_id', company.company_id)
+        .eq('chartofaccounts.report', 'Income Statement')
+        .gte('date', startDate)
+        .lte('date', endDate);
+
+      // Add country filter if specified
+      if (country && country !== 'All Countries') {
+        query = query.eq('territory.country', country);
+      }
+
+      const { data: rawData, error } = await query;
+
+      if (error) {
+        return { data: null, error: error.message };
+      }
+
+      if (!rawData || rawData.length === 0) {
+        return { data: [], error: null };
+      }
+
+      // Group and aggregate the data by account_key
+      const groupedData = rawData.reduce((acc: any, row: any) => {
+        const key = row.account_key;
+        const year = new Date(row.date).getFullYear();
+        
+        if (!acc[key]) {
+          acc[key] = {
+            account_key: row.account_key,
+            report: row.chartofaccounts.report,
+            class: row.chartofaccounts.class,
+            account: row.chartofaccounts.account,
+            yearTotals: {}
+          };
+        }
+
+        // Initialize year total if not exists
+        if (!acc[key].yearTotals[year]) {
+          acc[key].yearTotals[year] = 0;
+        }
+
+        // Add amount to year total
+        acc[key].yearTotals[year] += row.amount || 0;
+
+        return acc;
+      }, {});
+
+      // Convert to array and format the year columns
+      const formattedData = Object.values(groupedData).map((item: any) => {
+        const result: any = {
+          account_key: item.account_key,
+          report: item.report,
+          class: item.class,
+          account: item.account
+        };
+
+        // Add year columns with proper property names
+        years.forEach(year => {
+          const amount = item.yearTotals[year] || 0;
+          // Use year as property name (not year_XXXX) to match the component expectations
+          result[year] = amount;
+        });
+
+        return result;
+      });
+
+      // Sort by class and account_key
+      formattedData.sort((a, b) => {
+        if (a.class !== b.class) {
+          return a.class.localeCompare(b.class);
+        }
+        return a.account_key - b.account_key;
+      });
+
+      return { data: formattedData, error: null };
+    } catch (error) {
+      return { data: null, error: (error as Error).message };
+    }
+  }
+
+  /**
+   * Get transaction details for drill-down functionality
+   */
+  async getTransactionDetails(
+    companyName: string,
+    accountKey: number,
+    year: number
+  ): Promise<{ data: any[] | null; error: string | null }> {
+    try {
+      // First, get the company ID
+      const { data: company, error: companyError } = await supabase
+        .from('companies')
+        .select('company_id')
+        .eq('company_name', companyName)
+        .single();
+
+      if (companyError || !company) {
+        return { data: null, error: companyError?.message || 'Company not found' };
+      }
+
+      // Get transaction details for the specific account and year
+      const { data: transactions, error } = await supabase
+        .from('generalledger')
+        .select(`
+          entryno,
+          date,
+          details,
+          amount,
+          type,
+          chartofaccounts!inner (
+            account,
+            class,
+            subclass,
+            subaccount
+          )
+        `)
+        .eq('company_id', company.company_id)
+        .eq('account_key', accountKey)
+        .gte('date', `${year}-01-01`)
+        .lte('date', `${year}-12-31`)
+        .order('date', { ascending: false });
+
+      if (error) {
+        return { data: null, error: error.message };
+      }
+
+      // Format the transaction data to match TransactionDetail interface
+      const formattedTransactions = (transactions || []).map(transaction => ({
+        transaction_id: transaction.entryno?.toString() || 'N/A',
+        date: new Date(transaction.date).toLocaleDateString(),
+        description: transaction.details || 'No description',
+        amount: transaction.amount || 0,
+        reference: transaction.type || 'N/A'
+      }));
+
+      return { data: formattedTransactions, error: null };
+    } catch (error) {
+      return { data: null, error: (error as Error).message };
+    }
+  }
+
   // Helper Functions
 
   /**

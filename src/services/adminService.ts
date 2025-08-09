@@ -36,10 +36,7 @@ class AdminService {
     try {
       const { data: users, error } = await supabase
         .from('numerizamauth')
-        .select(`
-          *,
-          auth_user_id
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -57,9 +54,9 @@ class AdminService {
    */
   async getAllCompanies(): Promise<{ companies: Company[]; error: string | null }> {
     try {
-      // First get all unique companies from the company table
+      // First get all unique companies from the companies table
       const { data: companies, error: companiesError } = await supabase
-        .from('company')
+        .from('companies')
         .select('*')
         .order('created_at', { ascending: false })
 
@@ -124,7 +121,7 @@ class AdminService {
 
       // Get total companies count
       const { count: totalCompanies, error: companiesError } = await supabase
-        .from('company')
+        .from('companies')
         .select('*', { count: 'exact', head: true })
 
       if (companiesError) {

@@ -17,7 +17,8 @@
     "@langchain/langgraph": "^0.3.11",
     "@mui/icons-material": "^5.11.16",
     "@mui/material": "^5.13.0",
-    "@mui/x-date-pickers": "^8.9.0",
+    "@mui/x-date-pickers": "^8.10.0",
+    "@mui/x-date-pickers-pro": "^8.10.0",
     "@supabase/supabase-js": "^2.52.1",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/postcss": "^4.1.11",
@@ -34,7 +35,7 @@
     "react-hook-form": "^7.61.1",
     "react-router-dom": "^6.11.1",
     "react-toastify": "^11.0.5",
-    "recharts": "^2.6.2",
+    "recharts": "^2.15.4",
     "tailwindcss": "^4.1.11",
     "zod": "^3.25.76",
     "zustand": "^5.0.6"

@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
-import { ThemeProvider, createTheme } from '@mui/material/styles'
+import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import { AnimatePresence } from 'framer-motion'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import 'react-toastify/dist/ReactToastify.css'
+
+// Import proper theme system
+import { getTheme } from './styles/theme'
 
 // Layouts
 import MainLayout from './layouts/MainLayout'
@@ -70,50 +73,8 @@ function App() {
     }
   }
 
-  // Create MUI theme based on dark mode state
-  const theme = createTheme({
-    palette: {
-      mode: darkMode ? 'dark' : 'light',
-      primary: {
-        main: '#3f51b5',
-        light: '#757de8',
-        dark: '#002984',
-      },
-      secondary: {
-        main: '#f50057',
-        light: '#ff5983',
-        dark: '#bb002f',
-      },
-      background: {
-        default: darkMode ? '#121212' : '#f5f5f5',
-        paper: darkMode ? '#1e1e1e' : '#ffffff',
-      },
-    },
-    typography: {
-      fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-    },
-    shape: {
-      borderRadius: 8,
-    },
-    components: {
-      MuiButton: {
-        styleOverrides: {
-          root: {
-            textTransform: 'none',
-            borderRadius: 8,
-          },
-        },
-      },
-      MuiCard: {
-        styleOverrides: {
-          root: {
-            borderRadius: 8,
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08)',
-          },
-        },
-      },
-    },
-  })
+  // Create MUI theme based on dark mode state using proper theme system
+  const theme = getTheme(darkMode ? 'dark' : 'light')
 
   return (
     <QueryClientProvider client={queryClient}>

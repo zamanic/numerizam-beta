@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Box, Typography, Paper, Card, CardContent, CardHeader, IconButton, Button, Menu, MenuItem, Divider, Tabs, Tab, useTheme, useMediaQuery } from '@mui/material'
-import { MoreVert, Add, ArrowUpward, ArrowDownward, BarChart, PieChart, ShowChart, Timeline, Dashboard, DataUsage } from '@mui/icons-material'
+import { MoreVert, Add, ArrowUpward, ArrowDownward, BarChart, PieChart, ShowChart, Timeline, Dashboard, DataUsage, Assessment as ReportIcon } from '@mui/icons-material'
 import { Responsive, WidthProvider } from 'react-grid-layout'
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, PieChart as RechartsPieChart, Pie, Cell, Legend } from 'recharts'
 
@@ -12,6 +12,7 @@ import 'react-resizable/css/styles.css'
 import { useAuth } from '../context/AuthContext'
 import LoadingSpinner from '../components/LoadingSpinner'
 import LiveDataDashboard from '../components/LiveDataDashboard'
+import IncomeStatementGenerator from '../components/IncomeStatementGenerator'
 
 // Extend react-grid-layout with width provider
 const ResponsiveGridLayout = WidthProvider(Responsive)
@@ -494,6 +495,7 @@ const AccountantDashboard = () => {
         <Tabs value={currentTab} onChange={handleTabChange} aria-label="dashboard tabs">
           <Tab icon={<Dashboard />} label="Demo Dashboard" />
           <Tab icon={<DataUsage />} label="Live Data Dashboard" />
+          <Tab icon={<ReportIcon />} label="Income Statement" />
         </Tabs>
       </Box>
 
@@ -600,9 +602,13 @@ const AccountantDashboard = () => {
             ))}
           </ResponsiveGridLayout>
         </Paper>
-      ) : (
+      ) : currentTab === 1 ? (
         <Box sx={{ minHeight: '80vh' }}>
           <LiveDataDashboard />
+        </Box>
+      ) : (
+        <Box sx={{ minHeight: '80vh' }}>
+          <IncomeStatementGenerator />
         </Box>
       )}
 

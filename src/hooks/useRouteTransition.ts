@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useRouteLoading } from '../context/RouteLoadingContext'
 
 interface UseRouteTransitionReturn {
@@ -10,9 +10,25 @@ interface UseRouteTransitionReturn {
 
 export const useRouteTransition = (): UseRouteTransitionReturn => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { setLoading, setLoadingMessage } = useRouteLoading()
 
   const navigateWithLoading = useCallback((path: string, message?: string) => {
+    // Check if we're already on the target route
+    if (location.pathname === path) {
+      // If already on the same route, just show a brief loading state and return
+      if (message) {
+        setLoadingMessage(message)
+      }
+      setLoading(true)
+      
+      // Clear loading state after a brief moment to simulate refresh
+      setTimeout(() => {
+        setLoading(false)
+      }, 300)
+      return
+    }
+
     if (message) {
       setLoadingMessage(message)
     }
@@ -22,7 +38,7 @@ export const useRouteTransition = (): UseRouteTransitionReturn => {
     setTimeout(() => {
       navigate(path)
     }, 100)
-  }, [navigate, setLoading, setLoadingMessage])
+  }, [navigate, location.pathname, setLoading, setLoadingMessage])
 
   const showLoading = useCallback((message?: string) => {
     if (message) {

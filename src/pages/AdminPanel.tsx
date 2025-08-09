@@ -63,6 +63,7 @@ import { useAuth } from '../context/AuthContext'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { adminService, AdminUser, Company, UserStats } from '../services/adminService'
 import ApprovalManagement from '../components/admin/ApprovalManagement'
+import ErrorBoundary from '../components/ErrorBoundary'
 
 // Types
 type DataModel = {
@@ -660,133 +661,135 @@ const AdminPanel = () => {
 
           {/* Usage & Health Tab */}
           {tabIndex === 3 && (
-            <Box>
-              <Grid container spacing={3}>
-                {(userStats ? [
-                  { label: 'Total Users', value: userStats.totalUsers, change: 0, unit: '' },
-                  { label: 'Approved Users', value: userStats.approvedUsers, change: 0, unit: '' },
-                  { label: 'Pending Users', value: userStats.pendingUsers, change: 0, unit: '' },
-                  { label: 'Total Companies', value: userStats.totalCompanies, change: 0, unit: '' },
-                ] : mockUsageStats).map((stat, index) => (
-                  <Grid item xs={12} sm={6} md={3} key={index}>
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <Card variant="outlined">
-                        <CardContent>
-                          <Typography variant="h6" gutterBottom>
-                            {stat.label}
-                          </Typography>
-                          <Typography variant="h4">
-                            {stat.value.toLocaleString()}{stat.unit}
-                          </Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                            {stat.change > 0 ? (
-                              <ArrowUpward fontSize="small" color="success" />
-                            ) : (
-                              <ArrowDownward fontSize="small" color="error" />
-                            )}
-                            <Typography
-                              variant="body2"
-                              color={stat.change > 0 ? 'success.main' : 'error.main'}
-                              sx={{ ml: 0.5 }}
-                            >
-                              {Math.abs(stat.change)}% {stat.change > 0 ? 'increase' : 'decrease'}
+            <ErrorBoundary>
+              <Box>
+                <Grid container spacing={3}>
+                  {(userStats ? [
+                    { label: 'Total Users', value: userStats.totalUsers || 0, change: 0, unit: '' },
+                    { label: 'Approved Users', value: userStats.approvedUsers || 0, change: 0, unit: '' },
+                    { label: 'Pending Users', value: userStats.pendingUsers || 0, change: 0, unit: '' },
+                    { label: 'Total Companies', value: userStats.totalCompanies || 0, change: 0, unit: '' },
+                  ] : mockUsageStats).map((stat, index) => (
+                    <Grid item xs={12} sm={6} md={3} key={index}>
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        <Card variant="outlined">
+                          <CardContent>
+                            <Typography variant="h6" gutterBottom>
+                              {stat.label}
                             </Typography>
-                          </Box>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
+                            <Typography variant="h4">
+                              {stat.value.toLocaleString()}{stat.unit}
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                              {stat.change > 0 ? (
+                                <ArrowUpward fontSize="small" color="success" />
+                              ) : (
+                                <ArrowDownward fontSize="small" color="error" />
+                              )}
+                              <Typography
+                                variant="body2"
+                                color={stat.change > 0 ? 'success.main' : 'error.main'}
+                                sx={{ ml: 0.5 }}
+                              >
+                                {Math.abs(stat.change)}% {stat.change > 0 ? 'increase' : 'decrease'}
+                              </Typography>
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    </Grid>
+                  ))}
+                </Grid>
+
+                <Divider sx={{ my: 4 }} />
+
+                <Typography variant="h6" gutterBottom>
+                  System Health
+                </Typography>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}>
+                    <Paper variant="outlined" sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        API Performance
+                      </Typography>
+                      <Box sx={{ height: 200, p: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                          <Typography variant="body2" color="textSecondary">Response Time (ms)</Typography>
+                          <Typography variant="body2" color="success.main">Avg: 245ms</Typography>
+                        </Box>
+                        <Box sx={{ height: 120, display: 'flex', alignItems: 'end', gap: 1 }}>
+                          {[180, 220, 195, 245, 210, 235, 190, 260, 225, 240, 215, 250].map((value, index) => (
+                            <Box
+                              key={index}
+                              sx={{
+                                flex: 1,
+                                height: `${(value / 300) * 100}%`,
+                                bgcolor: value > 250 ? 'error.main' : value > 200 ? 'warning.main' : 'success.main',
+                                borderRadius: '2px 2px 0 0',
+                                minHeight: '4px'
+                              }}
+                            />
+                          ))}
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                          <Typography variant="caption" color="textSecondary">12h ago</Typography>
+                          <Typography variant="caption" color="textSecondary">Now</Typography>
+                        </Box>
+                      </Box>
+                    </Paper>
                   </Grid>
-                ))}
-              </Grid>
-
-              <Divider sx={{ my: 4 }} />
-
-              <Typography variant="h6" gutterBottom>
-                System Health
-              </Typography>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <Paper variant="outlined" sx={{ p: 2 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      API Performance
-                    </Typography>
-                    <Box sx={{ height: 200, p: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                        <Typography variant="body2" color="textSecondary">Response Time (ms)</Typography>
-                        <Typography variant="body2" color="success.main">Avg: 245ms</Typography>
+                  <Grid item xs={12} md={6}>
+                    <Paper variant="outlined" sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Error Rates
+                      </Typography>
+                      <Box sx={{ height: 200, p: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                          <Typography variant="body2" color="textSecondary">Error Rate (%)</Typography>
+                          <Typography variant="body2" color="success.main">Avg: 0.8%</Typography>
+                        </Box>
+                        <Box sx={{ height: 120, display: 'flex', alignItems: 'end', gap: 1 }}>
+                          {[0.5, 1.2, 0.8, 0.3, 0.9, 1.5, 0.6, 0.4, 1.1, 0.7, 0.9, 1.0].map((value, index) => (
+                            <Box
+                              key={index}
+                              sx={{
+                                flex: 1,
+                                height: `${(value / 2) * 100}%`,
+                                bgcolor: value > 1.5 ? 'error.main' : value > 1 ? 'warning.main' : 'success.main',
+                                borderRadius: '2px 2px 0 0',
+                                minHeight: '4px'
+                              }}
+                            />
+                          ))}
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                          <Typography variant="caption" color="textSecondary">12h ago</Typography>
+                          <Typography variant="caption" color="textSecondary">Now</Typography>
+                        </Box>
+                        <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box sx={{ width: 12, height: 12, bgcolor: 'success.main', borderRadius: '50%', mr: 1 }} />
+                            <Typography variant="caption">Good (&lt;1%)</Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box sx={{ width: 12, height: 12, bgcolor: 'warning.main', borderRadius: '50%', mr: 1 }} />
+                            <Typography variant="caption">Warning (1-1.5%)</Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box sx={{ width: 12, height: 12, bgcolor: 'error.main', borderRadius: '50%', mr: 1 }} />
+                            <Typography variant="caption">Critical (&gt;1.5%)</Typography>
+                          </Box>
+                        </Box>
                       </Box>
-                      <Box sx={{ height: 120, display: 'flex', alignItems: 'end', gap: 1 }}>
-                        {[180, 220, 195, 245, 210, 235, 190, 260, 225, 240, 215, 250].map((value, index) => (
-                          <Box
-                            key={index}
-                            sx={{
-                              flex: 1,
-                              height: `${(value / 300) * 100}%`,
-                              bgcolor: value > 250 ? 'error.main' : value > 200 ? 'warning.main' : 'success.main',
-                              borderRadius: '2px 2px 0 0',
-                              minHeight: '4px'
-                            }}
-                          />
-                        ))}
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                        <Typography variant="caption" color="textSecondary">12h ago</Typography>
-                        <Typography variant="caption" color="textSecondary">Now</Typography>
-                      </Box>
-                    </Box>
-                  </Paper>
+                    </Paper>
+                  </Grid>
                 </Grid>
-                <Grid item xs={12} md={6}>
-                  <Paper variant="outlined" sx={{ p: 2 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      Error Rates
-                    </Typography>
-                    <Box sx={{ height: 200, p: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                        <Typography variant="body2" color="textSecondary">Error Rate (%)</Typography>
-                        <Typography variant="body2" color="success.main">Avg: 0.8%</Typography>
-                      </Box>
-                      <Box sx={{ height: 120, display: 'flex', alignItems: 'end', gap: 1 }}>
-                        {[0.5, 1.2, 0.8, 0.3, 0.9, 1.5, 0.6, 0.4, 1.1, 0.7, 0.9, 1.0].map((value, index) => (
-                          <Box
-                            key={index}
-                            sx={{
-                              flex: 1,
-                              height: `${(value / 2) * 100}%`,
-                              bgcolor: value > 1.5 ? 'error.main' : value > 1 ? 'warning.main' : 'success.main',
-                              borderRadius: '2px 2px 0 0',
-                              minHeight: '4px'
-                            }}
-                          />
-                        ))}
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                        <Typography variant="caption" color="textSecondary">12h ago</Typography>
-                        <Typography variant="caption" color="textSecondary">Now</Typography>
-                      </Box>
-                      <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Box sx={{ width: 12, height: 12, bgcolor: 'success.main', borderRadius: '50%', mr: 1 }} />
-                          <Typography variant="caption">Good (&lt;1%)</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Box sx={{ width: 12, height: 12, bgcolor: 'warning.main', borderRadius: '50%', mr: 1 }} />
-                          <Typography variant="caption">Warning (1-1.5%)</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Box sx={{ width: 12, height: 12, bgcolor: 'error.main', borderRadius: '50%', mr: 1 }} />
-                          <Typography variant="caption">Critical (&gt;1.5%)</Typography>
-                        </Box>
-                      </Box>
-                    </Box>
-                  </Paper>
-                </Grid>
-              </Grid>
-            </Box>
+              </Box>
+            </ErrorBoundary>
           )}
 
           {/* Approvals Tab */}

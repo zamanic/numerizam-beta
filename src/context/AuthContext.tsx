@@ -303,10 +303,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           try {
             await Promise.race([
               fetchAndSetUserProfile(session),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Profile fetch timeout')), 10000))
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Profile fetch timeout')), 5000))
             ])
           } catch (profileError) {
-            console.warn('Profile fetch failed or timed out in SIGNED_IN, using fallback:', profileError)
+            console.info('Profile fetch failed or timed out in SIGNED_IN, using fallback:', profileError)
             // Create fallback user if profile fetch fails
             if (session?.user?.email) {
               const fallbackUser = {
@@ -361,10 +361,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           try {
             await Promise.race([
               fetchAndSetUserProfile(session),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Profile fetch timeout')), 10000))
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Profile fetch timeout')), 5000))
             ])
           } catch (profileError) {
-            console.warn('Profile fetch failed or timed out in TOKEN_REFRESHED, using fallback:', profileError)
+            console.info('Profile fetch failed or timed out in TOKEN_REFRESHED, using fallback:', profileError)
             // Create fallback user if profile fetch fails
             if (session?.user?.email) {
               const fallbackUser = {

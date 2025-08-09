@@ -476,7 +476,7 @@ Your Output:
 
 // Parse the response from the AI and return structured data
 export const parseNumerizamResponse = (response: any): ParsedResponse => {
-  // console.log("🔍 parseNumerizamResponse called with response:", response);
+  console.log("🔍 parseNumerizamResponse called with response:", response);
 
   if (!response) {
     console.error("❌ LLM response is empty.");
@@ -488,35 +488,30 @@ export const parseNumerizamResponse = (response: any): ParsedResponse => {
 
   try {
     // Clean the response to handle potential markdown formatting
-    // let cleanedResponse = response.trim();
-    // console.log(
-    //   "🧹 Cleaned response (before markdown removal):",
-    //   cleanedResponse
-    // );
+    let cleanedResponse = response.trim();
+    console.log("🧹 Cleaned response (before markdown removal):", cleanedResponse);
 
     // Remove markdown code blocks if present
-    // if (cleanedResponse.startsWith("```json")) {
-    //   cleanedResponse = cleanedResponse
-    //     .replace(/^```json\s*/, "")
-    //     .replace(/\s*```$/, "");
-    //   console.log("🧹 Removed ```json markdown, result:", cleanedResponse);
-    // } else if (cleanedResponse.startsWith("```")) {
-    //   cleanedResponse = cleanedResponse
-    //     .replace(/^```\s*/, "")
-    //     .replace(/\s*```$/, "");
-    //   console.log("🧹 Removed ``` markdown, result:", cleanedResponse);
-    // }
-    //console.log("🔄 Attempting to parse JSON:", cleanedResponse);
-    //const parsedData: NumerizamResponse = JSON.parse(cleanedResponse);
-    const parsedData = JSON.parse(response);
-    console.log(
-      "✅ Shuvo Successfully parsed JSON:",
-      // parsedData[0].transaction_payload
-      parsedData
-    );
+    if (cleanedResponse.startsWith("```json")) {
+      cleanedResponse = cleanedResponse
+        .replace(/^```json\s*/, "")
+        .replace(/\s*```$/, "");
+      console.log("🧹 Removed ```json markdown, result:", cleanedResponse);
+    } else if (cleanedResponse.startsWith("```")) {
+      cleanedResponse = cleanedResponse
+        .replace(/^```\s*/, "")
+        .replace(/\s*```$/, "");
+      console.log("🧹 Removed ``` markdown, result:", cleanedResponse);
+    }
+
+    // Additional cleanup for any remaining markdown or formatting issues
+    cleanedResponse = cleanedResponse.trim();
+    
+    console.log("🔄 Attempting to parse JSON:", cleanedResponse);
+    const parsedData = JSON.parse(cleanedResponse);
+    console.log("✅ Successfully parsed JSON:", parsedData);
 
     return {
-      // jsonData: parsedData[0],
       jsonData: parsedData,
     };
   } catch (err) {

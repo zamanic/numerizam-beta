@@ -146,24 +146,29 @@ export const ConfirmTransactionDialog: React.FC<
     initialChartOfAccounts
   );
 
-  // Sync local state with props when they change
+  // Sync props with local state
   useEffect(() => {
+    console.log("ConfirmTransactionDialog: Received transactions prop:", initialTransactions);
     setTransactions(initialTransactions);
   }, [initialTransactions]);
 
   useEffect(() => {
+    console.log("ConfirmTransactionDialog: Received companyInfo prop:", initialCompanyInfo);
     setCompanyInfo(initialCompanyInfo);
   }, [initialCompanyInfo]);
 
   useEffect(() => {
+    console.log("ConfirmTransactionDialog: Received territoryDetails prop:", initialTerritoryDetails);
     setTerritoryDetails(initialTerritoryDetails);
   }, [initialTerritoryDetails]);
 
   useEffect(() => {
+    console.log("ConfirmTransactionDialog: Received calendarInfo prop:", initialCalendarInfo);
     setCalendarInfo(initialCalendarInfo);
   }, [initialCalendarInfo]);
 
   useEffect(() => {
+    console.log("ConfirmTransactionDialog: Received chartOfAccounts prop:", initialChartOfAccounts);
     setChartOfAccounts(initialChartOfAccounts);
   }, [initialChartOfAccounts]);
 
@@ -374,7 +379,7 @@ export const ConfirmTransactionDialog: React.FC<
         ),
       },
       chart_of_accounts_data: chartOfAccounts.accounts.map((acc) => ({
-        account_key: parseInt(acc.code),
+        account_key: parseInt(acc.code) || 1000, // Default to 1000 if parsing fails
         report:
           acc.type === "Asset" ||
           acc.type === "Liability" ||
@@ -387,13 +392,19 @@ export const ConfirmTransactionDialog: React.FC<
         account: acc.name,
         subaccount: acc.name,
       })),
-      general_ledger_entries: selectedTxns.map((txn) => ({
-        account_key: parseInt(txn.account.split(" - ")[0]),
-        details: txn.description,
-        amount: txn.debit || txn.credit,
-        type: (txn.debit > 0 ? "Debit" : "Credit") as "Debit" | "Credit",
-      })),
-      // Additional metadata for the dialog
+      general_ledger_entries: selectedTxns.map((txn) => {
+        // Extract account key from account string (format: "1000 - Cash")
+        const accountMatch = txn.account.match(/^(\d+)/);
+        const accountKey = accountMatch ? parseInt(accountMatch[1]) : 1000;
+        
+        return {
+          account_key: accountKey,
+          details: txn.description,
+          amount: txn.debit || txn.credit,
+          type: (txn.debit > 0 ? "Debit" : "Credit") as "Debit" | "Credit",
+        };
+      }),
+      // Additional metadata for the dialog (not part of TransactionData interface)
       _metadata: {
         transactions: selectedTxns,
         companyInfo,
@@ -401,6 +412,9 @@ export const ConfirmTransactionDialog: React.FC<
         calendarInfo,
         chartOfAccounts,
         saveOption,
+        editedFields: transactions
+          .filter(t => t.isModified)
+          .map(t => ({ id: t.id, modified: true })),
       },
     };
 
@@ -444,6 +458,10 @@ export const ConfirmTransactionDialog: React.FC<
         maxWidth="xl"
         fullWidth
         disableEscapeKeyDown={isProcessing}
+        disableEnforceFocus
+        disableAutoFocus
+        disableRestoreFocus
+        aria-labelledby="confirm-transaction-dialog-title"
         PaperProps={{
           sx: {
             minHeight: "80vh",
