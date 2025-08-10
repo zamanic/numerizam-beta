@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Box, Typography, Paper, Card, CardContent, CardHeader, IconButton, Button, Menu, MenuItem, Divider, Tabs, Tab, useTheme, useMediaQuery } from '@mui/material'
-import { MoreVert, Add, ArrowUpward, ArrowDownward, BarChart, PieChart, ShowChart, Timeline, Dashboard, DataUsage, Assessment as ReportIcon } from '@mui/icons-material'
+import { MoreVert, Add, ArrowUpward, ArrowDownward, BarChart, PieChart, ShowChart, Timeline, Dashboard, DataUsage, Assessment as ReportIcon, AccountBalance } from '@mui/icons-material'
 import { Responsive, WidthProvider } from 'react-grid-layout'
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, PieChart as RechartsPieChart, Pie, Cell, Legend } from 'recharts'
 
@@ -8,11 +8,15 @@ import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 
+// Import Supabase service
+import { supabaseAccountingService } from '../services/supabaseAccountingService'
+
 // Context
 import { useAuth } from '../context/AuthContext'
 import LoadingSpinner from '../components/LoadingSpinner'
 import LiveDataDashboard from '../components/LiveDataDashboard'
 import IncomeStatementGenerator from '../components/IncomeStatementGenerator'
+import BalanceSheetGenerator from '../components/BalanceSheetGenerator'
 
 // Extend react-grid-layout with width provider
 const ResponsiveGridLayout = WidthProvider(Responsive)
@@ -66,11 +70,12 @@ const AccountantDashboard = () => {
   const [currentTab, setCurrentTab] = useState(0)
   
   // Dashboard widgets state
+  // State for widgets with initial placeholder values
   const [widgets, setWidgets] = useState<Widget[]>([
-    { id: 'revenue', title: 'Revenue', type: 'kpi', data: { value: 45000, change: 12.5, trend: 'up' }, size: [1, 1] },
-    { id: 'expenses', title: 'Expenses', type: 'kpi', data: { value: 28000, change: 8.3, trend: 'up' }, size: [1, 1] },
-    { id: 'profit', title: 'Profit', type: 'kpi', data: { value: 17000, change: 22.4, trend: 'up' }, size: [1, 1] },
-    { id: 'cashflow', title: 'Cash Flow', type: 'kpi', data: { value: 12500, change: -5.2, trend: 'down' }, size: [1, 1] },
+    { id: 'revenue', title: 'Revenue', type: 'kpi', data: { value: 0, change: 0, trend: 'up' }, size: [1, 1] },
+    { id: 'expenses', title: 'Expenses', type: 'kpi', data: { value: 0, change: 0, trend: 'up' }, size: [1, 1] },
+    { id: 'profit', title: 'Profit', type: 'kpi', data: { value: 0, change: 0, trend: 'up' }, size: [1, 1] },
+    { id: 'cashflow', title: 'Cash Flow', type: 'kpi', data: { value: 0, change: 0, trend: 'down' }, size: [1, 1] },
     { id: 'revenue-chart', title: 'Revenue Trend', type: 'barChart', data: mockRevenueData, size: [2, 2] },
     { id: 'profit-chart', title: 'Profit Growth', type: 'lineChart', data: mockProfitData, size: [2, 2] },
     { id: 'category-breakdown', title: 'Revenue by Category', type: 'pieChart', data: mockCategoryData, size: [2, 2] },
@@ -121,12 +126,90 @@ const AccountantDashboard = () => {
     ],
   })
 
-  // Simulate loading data
+  // Simulate loading data and fetch real financial data
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false)
-    }, 1000)
-    return () => clearTimeout(timer)
+    const loadFinancialData = async () => {
+      try {
+        // Fetch current year data
+        const [revenue, expenses, profit, cashFlow] = await Promise.all([
+          supabaseAccountingService.getCurrentYearRevenue(),
+          supabaseAccountingService.getCurrentYearExpenses(),
+          supabaseAccountingService.getCurrentYearProfit(),
+          supabaseAccountingService.getCurrentYearCashFlow()
+        ])
+
+        // Fetch growth data
+        const [revenueGrowth, expensesGrowth, profitGrowth, cashFlowGrowth] = await Promise.all([
+          supabaseAccountingService.getRevenueGrowth(),
+          supabaseAccountingService.getExpensesGrowth(),
+          supabaseAccountingService.getProfitGrowth(),
+          supabaseAccountingService.getCashFlowGrowth()
+        ])
+
+        // Update widgets with real data
+        setWidgets(prevWidgets => prevWidgets.map(widget => {
+          switch (widget.id) {
+            case 'revenue':
+              const revenueGrowthValue = revenueGrowth.data?.[0]?.revenue_growth_percentage 
+                ? parseFloat(revenueGrowth.data[0].revenue_growth_percentage) 
+                : 0
+              return {
+                ...widget,
+                data: {
+                  value: revenue,
+                  change: Math.abs(revenueGrowthValue),
+                  trend: revenueGrowthValue >= 0 ? 'up' : 'down'
+                }
+              }
+            case 'expenses':
+              const expensesGrowthValue = expensesGrowth.data?.[0]?.expenses_growth_percentage 
+                ? parseFloat(expensesGrowth.data[0].expenses_growth_percentage) 
+                : 0
+              return {
+                ...widget,
+                data: {
+                  value: expenses,
+                  change: Math.abs(expensesGrowthValue),
+                  trend: expensesGrowthValue >= 0 ? 'up' : 'down'
+                }
+              }
+            case 'profit':
+              const profitGrowthValue = profitGrowth.data?.[0]?.profit_growth_percentage 
+                ? parseFloat(profitGrowth.data[0].profit_growth_percentage) 
+                : 0
+              return {
+                ...widget,
+                data: {
+                  value: profit,
+                  change: Math.abs(profitGrowthValue),
+                  trend: profitGrowthValue >= 0 ? 'up' : 'down'
+                }
+              }
+            case 'cashflow':
+              const cashFlowGrowthValue = cashFlowGrowth.data?.[0]?.cash_flow_growth_percentage 
+                ? parseFloat(cashFlowGrowth.data[0].cash_flow_growth_percentage) 
+                : 0
+              return {
+                ...widget,
+                data: {
+                  value: cashFlow,
+                  change: Math.abs(cashFlowGrowthValue),
+                  trend: cashFlowGrowthValue >= 0 ? 'up' : 'down'
+                }
+              }
+            default:
+              return widget
+          }
+        }))
+
+        setLoading(false)
+      } catch (error) {
+        console.error('Error loading financial data:', error)
+        setLoading(false)
+      }
+    }
+
+    loadFinancialData()
   }, [])
 
   // Handle widget menu open
@@ -496,6 +579,7 @@ const AccountantDashboard = () => {
           <Tab icon={<Dashboard />} label="Demo Dashboard" />
           <Tab icon={<DataUsage />} label="Live Data Dashboard" />
           <Tab icon={<ReportIcon />} label="Income Statement" />
+          <Tab icon={<AccountBalance />} label="Balance Sheet" />
         </Tabs>
       </Box>
 
@@ -606,9 +690,13 @@ const AccountantDashboard = () => {
         <Box sx={{ minHeight: '80vh' }}>
           <LiveDataDashboard />
         </Box>
-      ) : (
+      ) : currentTab === 2 ? (
         <Box sx={{ minHeight: '80vh' }}>
           <IncomeStatementGenerator />
+        </Box>
+      ) : (
+        <Box sx={{ minHeight: '80vh' }}>
+          <BalanceSheetGenerator />
         </Box>
       )}
 
