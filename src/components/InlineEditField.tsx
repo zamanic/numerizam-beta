@@ -22,7 +22,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface InlineEditFieldProps {
-  value: string | number
+  value: string | number | null | undefined
   onSave: (value: string | number) => void
   onCancel?: () => void
   type?: 'text' | 'number' | 'select' | 'currency'
@@ -71,7 +71,7 @@ export const InlineEditField: React.FC<InlineEditFieldProps> = ({
   const inputRef = useRef<any>(null)
 
   useEffect(() => {
-    setEditValue(value)
+    setEditValue(value || '')
     setIsModified(false)
     setIsValidated(false)
     setError(null)
@@ -100,7 +100,7 @@ export const InlineEditField: React.FC<InlineEditFieldProps> = ({
   const handleEdit = () => {
     if (disabled) return
     setIsEditing(true)
-    setEditValue(value)
+    setEditValue(value || '')
     setIsModified(false)
     setError(null)
   }
@@ -134,7 +134,7 @@ export const InlineEditField: React.FC<InlineEditFieldProps> = ({
   }
 
   const handleCancel = () => {
-    setEditValue(value)
+    setEditValue(value || '')
     setIsEditing(false)
     setIsModified(false)
     setError(null)
@@ -145,7 +145,7 @@ export const InlineEditField: React.FC<InlineEditFieldProps> = ({
 
   const handleChange = (newValue: string | number) => {
     setEditValue(newValue)
-    setIsModified(newValue !== value)
+    setIsModified(newValue !== (value || ''))
     setError(null)
 
     // Real-time validation
@@ -165,13 +165,19 @@ export const InlineEditField: React.FC<InlineEditFieldProps> = ({
     }
   }
 
-  const formatDisplayValue = (val: string | number) => {
+  const formatDisplayValue = (val: string | number | null | undefined) => {
+    // Handle null, undefined, or empty values
+    if (val === null || val === undefined || val === '') {
+      return '-'
+    }
+    
     if (type === 'currency' && typeof val === 'number') {
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',
       }).format(val)
     }
+    
     return val.toString()
   }
 
@@ -206,82 +212,87 @@ export const InlineEditField: React.FC<InlineEditFieldProps> = ({
         animate={{ scale: 1 }}
         className={`inline-edit-container ${className}`}
       >
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-          {type === 'select' ? (
-            <FormControl size={size} fullWidth={fullWidth} error={!!error}>
-              {label && <InputLabel>{label}</InputLabel>}
-              <Select
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {label && (
+            <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+              {label}
+            </Typography>
+          )}
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+            {type === 'select' ? (
+              <FormControl size={size} fullWidth={fullWidth} error={!!error}>
+                <Select
+                  value={editValue}
+                  onChange={(e) => handleChange(e.target.value)}
+                  className={`${isModified ? 'modified-indicator' : ''} ${
+                    error ? 'error-shake' : ''
+                  }`}
+                >
+                  {options.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : (
+              <TextField
+                ref={inputRef}
                 value={editValue}
-                onChange={(e) => handleChange(e.target.value)}
-                label={label}
-                className={`${isModified ? 'modified-indicator' : ''} ${
+                onChange={(e) => handleChange(
+                  type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
+                )}
+                onKeyDown={handleKeyDown}
+                type={type === 'currency' ? 'number' : type}
+                placeholder={placeholder}
+                size={size}
+                fullWidth={fullWidth}
+                multiline={multiline}
+                rows={rows}
+                error={!!error}
+                helperText={error}
+                disabled={disabled}
+                InputProps={getInputAdornment()}
+                className={`edit-mode ${isModified ? 'modified-indicator' : ''} ${
                   error ? 'error-shake' : ''
                 }`}
-              >
-                {options.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          ) : (
-            <TextField
-              ref={inputRef}
-              value={editValue}
-              onChange={(e) => handleChange(
-                type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
-              )}
-              onKeyDown={handleKeyDown}
-              type={type === 'currency' ? 'number' : type}
-              placeholder={placeholder}
-              label={label}
-              size={size}
-              fullWidth={fullWidth}
-              multiline={multiline}
-              rows={rows}
-              error={!!error}
-              helperText={error}
-              InputProps={getInputAdornment()}
-              className={`edit-mode ${isModified ? 'modified-indicator' : ''} ${
-                error ? 'error-shake' : ''
-              }`}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  '&.edit-mode': {
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#1E40AF',
-                      borderWidth: '2px',
-                      boxShadow: '0 0 0 3px rgba(30, 64, 175, 0.1)',
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '&.edit-mode': {
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#1E40AF',
+                        borderWidth: '2px',
+                        boxShadow: '0 0 0 3px rgba(30, 64, 175, 0.1)',
+                      },
                     },
                   },
-                },
-              }}
-            />
-          )}
-          
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <Tooltip title="Save changes">
-              <IconButton
-                size="small"
-                onClick={handleSave}
-                color="primary"
-                disabled={!!error}
-                className="hover-lift"
-              >
-                <Check fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Cancel changes">
-              <IconButton
-                size="small"
-                onClick={handleCancel}
-                color="default"
-                className="hover-lift"
-              >
-                <Close fontSize="small" />
-              </IconButton>
-            </Tooltip>
+                }}
+              />
+            )}
+            
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              <Tooltip title="Save changes">
+                <IconButton
+                  size="small"
+                  onClick={handleSave}
+                  color="primary"
+                  disabled={!!error}
+                  className="hover-lift"
+                >
+                  <Check fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Cancel changes">
+                <IconButton
+                  size="small"
+                  onClick={handleCancel}
+                  color="default"
+                  className="hover-lift"
+                >
+                  <Close fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
           </Box>
         </Box>
         
@@ -313,8 +324,8 @@ export const InlineEditField: React.FC<InlineEditFieldProps> = ({
       onDoubleClick={handleEdit}
       sx={{
         display: 'flex',
-        alignItems: 'center',
-        gap: 1,
+        flexDirection: 'column',
+        gap: 0.5,
         padding: '8px 12px',
         borderRadius: 1,
         cursor: disabled ? 'default' : 'pointer',
@@ -328,53 +339,60 @@ export const InlineEditField: React.FC<InlineEditFieldProps> = ({
         },
       }}
     >
-      <Typography
-        variant="body2"
-        sx={{
-          flex: 1,
-          fontFamily: type === 'number' || type === 'currency' ? 'monospace' : 'inherit',
-          color: disabled ? 'text.disabled' : 'text.primary',
-        }}
-      >
-        {formatDisplayValue(value)}
-      </Typography>
-      
-      <AnimatePresence>
-        {isValidated && (
+      {label && (
+        <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+          {label}
+        </Typography>
+      )}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            flex: 1,
+            fontFamily: type === 'number' || type === 'currency' ? 'monospace' : 'inherit',
+            color: disabled ? 'text.disabled' : 'text.primary',
+          }}
+        >
+          {formatDisplayValue(value)}
+        </Typography>
+        
+        <AnimatePresence>
+          {isValidated && (
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              className="success-bounce"
+            >
+              <Chip
+                icon={<CheckCircle />}
+                label="Saved"
+                size="small"
+                color="success"
+                variant="outlined"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {isHovered && !disabled && !isValidated && (
           <motion.div
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            className="success-bounce"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
           >
-            <Chip
-              icon={<CheckCircle />}
-              label="Saved"
-              size="small"
-              color="success"
-              variant="outlined"
-            />
+            <Tooltip title="Double-click to edit">
+              <IconButton size="small" onClick={handleEdit} className="hover-lift">
+                <Edit fontSize="small" />
+              </IconButton>
+            </Tooltip>
           </motion.div>
         )}
-      </AnimatePresence>
-      
-      {isHovered && !disabled && !isValidated && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.8 }}
-        >
-          <Tooltip title="Double-click to edit">
-            <IconButton size="small" onClick={handleEdit} className="hover-lift">
-              <Edit fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </motion.div>
-      )}
-      
-      {isModified && (
-        <Box className="modified-indicator" />
-      )}
+        
+        {isModified && (
+          <Box className="modified-indicator" />
+        )}
+      </Box>
     </Box>
   )
 }

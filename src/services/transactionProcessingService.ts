@@ -91,22 +91,12 @@ export class TransactionProcessingService {
         };
       }
 
-      // Step 5: Save to Supabase (or simulate for demo mode)
+      // Step 5: Save to Supabase (including demo mode)
       let saveResult;
       
-      // Check if this is demo mode
-      if (userId === 'demo-user') {
-        // For demo mode, simulate a successful save without actually saving to database
-        console.log('Demo mode: Simulating successful save');
-        saveResult = {
-          success: true,
-          error: null,
-          entryNumbers: [999, 999] // Mock entry numbers for demo - using 999 as per user's query
-        };
-      } else {
-        // For real users, save to database
-        saveResult = await supabaseAccountingService.saveTransactionData(userId || 'default-user', transactionData);
-      }
+      // Save to database for both demo and real users
+      console.log(`Saving transaction to database for user: ${userId}`);
+      saveResult = await supabaseAccountingService.saveTransactionData(userId || 'demo-user', transactionData);
       
       console.log('Save result:', saveResult);
       
@@ -462,7 +452,7 @@ export class TransactionProcessingService {
           region: transactionData.territory?.region || region || 'Asia'
         },
         calendar_data: {
-          date: transactionData.calendar_data?.date || transactionData.calendar?.date || transactionData.date || '',
+          date: this.validateDate(transactionData.calendar_data?.date || transactionData.calendar?.date || transactionData.date),
           year: transactionData.calendar_data?.year || transactionData.calendar?.year || new Date().getFullYear(),
           quarter: transactionData.calendar_data?.quarter || transactionData.calendar?.quarter || this.getQuarter(new Date()),
           month: transactionData.calendar_data?.month || transactionData.calendar?.month || new Date().toLocaleString('default', { month: 'long' }),
@@ -550,6 +540,25 @@ export class TransactionProcessingService {
       account: account.account || '',
       subaccount: account.subaccount || account.account || ''
     }));
+  }
+
+  /**
+   * Validate and normalize date string
+   */
+  private validateDate(dateStr: string | undefined | null): string {
+    if (!dateStr || dateStr.trim() === '' || dateStr.toLowerCase() === 'undefined' || dateStr === 'null' || dateStr === 'None') {
+      return new Date().toISOString().split('T')[0];
+    }
+    
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        return new Date().toISOString().split('T')[0];
+      }
+      return date.toISOString().split('T')[0];
+    } catch {
+      return new Date().toISOString().split('T')[0];
+    }
   }
 
   /**

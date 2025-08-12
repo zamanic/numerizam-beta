@@ -99,12 +99,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  // Helper function to fetch and set user profile
+  // Helper function to fetch and set user profile with caching
   const fetchAndSetUserProfile = async (supabaseSession: Session | null) => {
     if (!supabaseSession) {
       setUser(null)
       setRole(null)
       return
+    }
+
+    // Simple caching to prevent duplicate queries
+    const cacheKey = `user_profile_${supabaseSession.user.id}`
+    const cachedProfile = sessionStorage.getItem(cacheKey)
+    
+    if (cachedProfile) {
+      try {
+        const userData = JSON.parse(cachedProfile)
+        setUser(userData)
+        setRole(userData.role)
+        return
+      } catch (e) {
+        // Cache invalid, proceed with fresh fetch
+        sessionStorage.removeItem(cacheKey)
+      }
     }
 
     try {
@@ -113,6 +129,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userData = createUserData(currentUser)
         setUser(userData)
         setRole(currentUser.role)
+        
+        // Cache the profile for 5 minutes
+        sessionStorage.setItem(cacheKey, JSON.stringify(userData))
         
         // Don't show approval warning for approved users
         if (!currentUser.is_approved) {
@@ -299,14 +318,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userRole = session?.user?.user_metadata?.role ?? null
           setRole(userRole)
           
-          // Fetch profile with timeout protection
+          // Fetch profile with timeout protection (increased to 15 seconds)
           try {
             await Promise.race([
               fetchAndSetUserProfile(session),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Profile fetch timeout')), 5000))
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Profile fetch timeout')), 15000))
             ])
           } catch (profileError) {
-            console.info('Profile fetch failed or timed out in SIGNED_IN, using fallback:', profileError)
+            console.warn('Profile fetch failed or timed out in SIGNED_IN, using fallback:', profileError)
             // Create fallback user if profile fetch fails
             if (session?.user?.email) {
               const fallbackUser = {
@@ -357,14 +376,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userRole = session?.user?.user_metadata?.role ?? null
           setRole(userRole)
           
-          // Fetch profile with timeout protection
+          // Fetch profile with timeout protection (increased to 15 seconds)
           try {
             await Promise.race([
               fetchAndSetUserProfile(session),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Profile fetch timeout')), 5000))
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Profile fetch timeout')), 15000))
             ])
           } catch (profileError) {
-            console.info('Profile fetch failed or timed out in TOKEN_REFRESHED, using fallback:', profileError)
+            console.warn('Profile fetch failed or timed out in TOKEN_REFRESHED, using fallback:', profileError)
             // Create fallback user if profile fetch fails
             if (session?.user?.email) {
               const fallbackUser = {

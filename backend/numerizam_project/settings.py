@@ -175,6 +175,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5175",
     "http://localhost:5176",  # Vite dev server (alternative port)
     "http://127.0.0.1:5176",
+    "http://localhost:8000",  # Django backend
+    "http://127.0.0.1:8000",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+# Allow all origins during development (more permissive)
+CORS_ALLOW_ALL_ORIGINS = True

@@ -58,6 +58,7 @@ import {
 
 import { useAuth } from '../context/AuthContext'
 import { numerizamAuthService, NumerizamUser } from '../services/numerizamAuthService'
+import { supabaseAccountingService } from '../services/supabaseAccountingService'
 import LoadingSpinner from '../components/LoadingSpinner'
 
 const AdminDashboard = () => {
@@ -71,6 +72,11 @@ const AdminDashboard = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [actionType, setActionType] = useState<'approve' | 'reject'>('approve')
   const [currentTab, setCurrentTab] = useState(0)
+  
+  // Revenue data state
+  const [currentYearRevenue, setCurrentYearRevenue] = useState<number>(0)
+  const [revenueGrowth, setRevenueGrowth] = useState<string>('N/A')
+  const [revenueLoading, setRevenueLoading] = useState(true)
 
   // Sample data for charts
   const userStatsData = [
@@ -116,6 +122,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     loadPendingUsers()
+    loadRevenueData()
   }, [])
 
   const loadPendingUsers = async () => {
@@ -135,6 +142,33 @@ const AdminDashboard = () => {
       setIsLoading(false)
     }
   }
+
+  const loadRevenueData = async () => {
+    setRevenueLoading(true);
+    try {
+      // Get current year revenue
+      const currentRevenue = await supabaseAccountingService.getCurrentYearRevenue();
+      setCurrentYearRevenue(currentRevenue);
+
+      // Get revenue growth
+      const { data: growthData, error: growthError } = await supabaseAccountingService.getRevenueGrowth();
+      if (growthError) {
+        console.error('Error fetching revenue growth:', growthError);
+      } else if (growthData && growthData.length > 0) {
+        const latestGrowth = growthData[0];
+        // Parse the percentage string to get the numeric value
+        const growthPercentage = latestGrowth.revenue_growth_percentage;
+        if (growthPercentage && growthPercentage !== 'N/A') {
+          const numericGrowth = parseFloat(growthPercentage.replace('%', ''));
+          setRevenueGrowth(numericGrowth);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading revenue data:', error);
+    } finally {
+      setRevenueLoading(false);
+    }
+  };
 
   const handleApproveUser = async (userId: string) => {
     if (!user) return
@@ -196,6 +230,27 @@ const AdminDashboard = () => {
     <Box sx={{ height: '100%', overflow: 'auto' }}>
       {/* Stats Cards */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
+        {/* Revenue Card */}
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <TrendingUp sx={{ fontSize: 40, color: 'white', mr: 2 }} />
+                <Box>
+                  <Typography variant="h6" sx={{ color: 'white' }}>
+                    {revenueLoading ? 'Loading...' : `$${currentYearRevenue.toLocaleString()}`}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                    Current Year Revenue
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#4ade80', fontWeight: 'bold' }}>
+                    {revenueLoading ? '' : `↑ ${revenueGrowth}`}
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <Card sx={{ height: '100%' }}>
             <CardContent>

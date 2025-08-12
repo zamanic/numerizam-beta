@@ -56,6 +56,7 @@ import {
   Slider,
   ButtonGroup,
 } from '@mui/material';
+import { useAuth } from '../context/AuthContext';
 import {
   DatePicker,
   LocalizationProvider,
@@ -197,12 +198,16 @@ const IncomeStatementGenerator: React.FC = () => {
   const [previewOpen, setPreviewOpen] = useState<boolean>(false);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
 
+  const { isAuthenticated, initialLoading } = useAuth();
+
   useEffect(() => {
-    loadCompanies();
-    loadSavedConfigurations();
-    loadAvailableYears();
-    loadAvailableCountries();
-  }, []);
+    if (!initialLoading && isAuthenticated) {
+      loadCompanies();
+      loadSavedConfigurations();
+      loadAvailableYears();
+      loadAvailableCountries();
+    }
+  }, [isAuthenticated, initialLoading]);
 
   const loadAvailableCountries = async () => {
     try {
@@ -243,14 +248,22 @@ const IncomeStatementGenerator: React.FC = () => {
 
   const loadCompanies = async () => {
     try {
+      setLoading(true);
       const { companies, error } = await supabaseAccountingService.getCompanies();
       if (error) {
+        console.error('IncomeStatementGenerator: Failed to load companies:', error);
         setError(`Failed to load companies: ${error}`);
-      } else if (companies) {
-        setCompanies(companies);
+      } else {
+        setCompanies(companies || []);
+        if (companies && companies.length > 0) {
+          setSelectedCompany(companies[0].company_id.toString());
+        }
       }
     } catch (err) {
+      console.error('IncomeStatementGenerator: Exception loading companies:', err);
       setError('Failed to load companies');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -658,6 +671,14 @@ const IncomeStatementGenerator: React.FC = () => {
       </ResponsiveContainer>
     </Box>
   );
+
+  if (loading || initialLoading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>

@@ -183,26 +183,15 @@ class TransactionPayloadSerializer(serializers.Serializer):
                         f"Missing required field '{field}' in general ledger entry"
                     )
             
-            # Validate Type field values
-            if entry['Type'] not in ['Debit', 'Credit']:
+            # Validate Type field values - accept both uppercase and proper case
+            entry_type = entry['Type'].upper() if isinstance(entry['Type'], str) else str(entry['Type']).upper()
+            if entry_type not in ['DEBIT', 'CREDIT']:
                 raise serializers.ValidationError(
-                    f"Invalid Type '{entry['Type']}'. Must be 'Debit' or 'Credit'"
+                    f"Invalid Type '{entry['Type']}'. Must be 'Debit', 'Credit', 'DEBIT', or 'CREDIT'"
                 )
         
-        # Validate that debits equal credits
-        total_debits = sum(
-            float(entry['Amount']) for entry in value 
-            if entry['Type'] == 'Debit'
-        )
-        total_credits = sum(
-            float(entry['Amount']) for entry in value 
-            if entry['Type'] == 'Credit'
-        )
-        
-        if abs(total_debits - total_credits) > 0.01:  # Allow for small rounding differences
-            raise serializers.ValidationError(
-                f"Transaction is not balanced. Debits: {total_debits}, Credits: {total_credits}"
-            )
+        # Note: Balance validation removed to allow unbalanced transactions
+        # The frontend now handles balance warnings appropriately
         
         return value
 

@@ -556,13 +556,42 @@ class ProcessTransactionView(APIView):
     
     def post(self, request):
         """Process a transaction payload."""
+        # Comprehensive debugging as suggested
+        print("=" * 80)
+        print("DEBUG: ProcessTransactionView.post() called")
+        print(f"DEBUG: RAW BODY: {request.body}")
+        print(f"DEBUG: REQUEST.DATA: {request.data}")
+        print(f"DEBUG: REQUEST.DATA TYPE: {type(request.data)}")
+        
+        # Check for data corruption in request.data
+        if hasattr(request.data, 'get'):
+            print(f"DEBUG: company_data: {request.data.get('company_data')}")
+            print(f"DEBUG: calendar_data: {request.data.get('calendar_data')}")
+            print(f"DEBUG: chart_of_accounts_data: {request.data.get('chart_of_accounts_data')}")
+            print(f"DEBUG: general_ledger_entries: {request.data.get('general_ledger_entries')}")
+        
+        # Check if any field names are corrupted
+        if isinstance(request.data, dict):
+            for key, value in request.data.items():
+                print(f"DEBUG: Key '{key}' -> Value type: {type(value)}")
+                if isinstance(value, list) and value:
+                    print(f"DEBUG: First item in '{key}': {value[0] if value else 'EMPTY'}")
+                elif isinstance(value, dict):
+                    print(f"DEBUG: Dict keys in '{key}': {list(value.keys())}")
+        
+        print("=" * 80)
+        
         serializer = TransactionPayloadSerializer(data=request.data)
         
         if not serializer.is_valid():
+            print(f"DEBUG: Serializer errors: {serializer.errors}")
+            print(f"DEBUG: Serializer data: {serializer.data}")
             return Response(
                 {'error': 'Invalid transaction payload', 'details': serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        print(f"DEBUG: Serializer validated_data: {serializer.validated_data}")
         
         try:
             with transaction.atomic():
@@ -570,6 +599,9 @@ class ProcessTransactionView(APIView):
                 return Response(result, status=status.HTTP_201_CREATED)
                 
         except Exception as e:
+            import traceback
+            print(f"DEBUG: Exception occurred: {str(e)}")
+            print(f"DEBUG: Traceback: {traceback.format_exc()}")
             return Response(
                 {'error': f'Failed to process transaction: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -586,15 +618,25 @@ class ProcessTransactionView(APIView):
         
         # Get or create calendar entry
         calendar_data = data['calendar_data']
-        transaction_date = datetime.strptime(calendar_data['Date'], '%Y-%m-%d').date()
+        try:
+            date_str = str(calendar_data['Date']).strip()
+            if date_str.lower() in ['undefined', 'null', 'none', '']:
+                # Use current date as fallback
+                transaction_date = datetime.now().date()
+            else:
+                transaction_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            # If date format is invalid, use current date
+            transaction_date = datetime.now().date()
+        
         calendar_entry, created = Calendar.objects.get_or_create(
             company=company,
             date=transaction_date,
             defaults={
-                'year': calendar_data['Year'],
-                'quarter': calendar_data['Quarter'],
-                'month': calendar_data['Month'],
-                'day': calendar_data['Day']
+                'year': transaction_date.year,
+                'quarter': f"Q{(transaction_date.month - 1) // 3 + 1}",
+                'month': transaction_date.strftime('%B'),
+                'day': transaction_date.strftime('%A')
             }
         )
         

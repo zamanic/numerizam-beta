@@ -50,15 +50,32 @@ class NumerizamAuthService {
         return { user: null, error: 'Authentication failed' }
       }
 
-      // Then fetch user profile from numerizamauth table using email
+      // Fetch user profile from numerizamauth table using auth user ID (more efficient)
       const { data: userProfile, error: profileError } = await supabase
         .from('numerizamauth')
         .select('*')
-        .eq('email', email)
+        .eq('id', authData.user.id)
         .single()
 
       if (profileError) {
-        return { user: null, error: `Profile not found: ${profileError.message}` }
+        // Fallback to email-based lookup for backward compatibility
+        const { data: userProfileByEmail, error: emailError } = await supabase
+          .from('numerizamauth')
+          .select('*')
+          .eq('email', email)
+          .single()
+
+        if (emailError) {
+          return { user: null, error: `Profile not found: ${emailError.message}` }
+        }
+
+        if (!userProfileByEmail.is_approved) {
+          // Sign out the user since they're not approved
+          await supabase.auth.signOut()
+          return { user: null, error: 'Your account is pending admin approval. Please wait for approval before logging in.' }
+        }
+
+        return { user: userProfileByEmail as NumerizamUser, error: null }
       }
 
       if (!userProfile.is_approved) {
@@ -166,15 +183,26 @@ class NumerizamAuthService {
         return { user: null, error: 'No authenticated user' }
       }
 
-      // Fetch user profile from numerizamauth table using email
+      // Fetch user profile from numerizamauth table using auth user ID (more efficient)
       const { data: userProfile, error: profileError } = await supabase
         .from('numerizamauth')
         .select('*')
-        .eq('email', authUser.email)
+        .eq('id', authUser.id)
         .single()
 
       if (profileError) {
-        return { user: null, error: `Profile not found: ${profileError.message}` }
+        // Fallback to email-based lookup for backward compatibility
+        const { data: userProfileByEmail, error: emailError } = await supabase
+          .from('numerizamauth')
+          .select('*')
+          .eq('email', authUser.email)
+          .single()
+
+        if (emailError) {
+          return { user: null, error: `Profile not found: ${emailError.message}` }
+        }
+
+        return { user: userProfileByEmail as NumerizamUser, error: null }
       }
 
       return { user: userProfile as NumerizamUser, error: null }

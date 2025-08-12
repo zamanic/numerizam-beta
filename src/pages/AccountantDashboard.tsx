@@ -130,6 +130,13 @@ const AccountantDashboard = () => {
   useEffect(() => {
     const loadFinancialData = async () => {
       try {
+        // Check if user is authenticated before loading financial data
+        if (!user) {
+          console.warn('User not authenticated, skipping financial data load')
+          setLoading(false)
+          return
+        }
+
         // Fetch current year data
         const [revenue, expenses, profit, cashFlow] = await Promise.all([
           supabaseAccountingService.getCurrentYearRevenue(),

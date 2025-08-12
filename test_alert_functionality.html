@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Alert Functionality</title>
+</head>
+<body>
+    <h1>Test Alert Functionality</h1>
+    <button id="testAlert">Test Alert</button>
+    <button id="testFetch">Test Fetch to Backend</button>
+    <div id="output"></div>
+
+    <script>
+        // Test basic alert functionality
+        document.getElementById('testAlert').addEventListener('click', function() {
+            alert('This is a test alert!');
+        });
+
+        // Test fetch to backend and alert response
+        document.getElementById('testFetch').addEventListener('click', async function() {
+            const output = document.getElementById('output');
+            output.innerHTML = 'Testing fetch...';
+            
+            try {
+                const testPayload = {
+                    company_data: {
+                        company_name: "Test Company"
+                    },
+                    territory_data: {
+                        Country: "USA",
+                        Region: "North"
+                    },
+                    calendar_data: {
+                        Date: "2024-01-15",
+                        Year: 2024,
+                        Quarter: 1,
+                        Month: 1,
+                        Day: 15
+                    },
+                    chart_of_accounts_data: [
+                        {
+                            Account_key: 1000,
+                            Report: "Balance Sheet",
+                            Class: "Assets",
+                            SubClass: "Current Assets",
+                            SubClass2: "Cash",
+                            Account: "Cash",
+                            SubAccount: "Petty Cash"
+                        },
+                        {
+                            Account_key: 5000,
+                            Report: "Income Statement",
+                            Class: "Expenses",
+                            SubClass: "Operating Expenses",
+                            SubClass2: "Office Supplies",
+                            Account: "Office Supplies",
+                            SubAccount: "General Supplies"
+                        }
+                    ],
+                    general_ledger_entries: [
+                        {
+                            Account_key: 5000,
+                            Amount: 50,
+                            Type: "Debit",
+                            Details: "Office supplies purchase"
+                        },
+                        {
+                            Account_key: 1000,
+                            Amount: 50,
+                            Type: "Credit",
+                            Details: "Cash payment for office supplies"
+                        }
+                    ]
+                };
+
+                const response = await fetch('http://localhost:8000/api/transactions/process/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testPayload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                output.innerHTML = `<p>Response: ${JSON.stringify(result, null, 2)}</p>`;
+                
+                // Test the alert with the actual response message
+                alert(`Success: ${result.message}`);
+                
+            } catch (error) {
+                output.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                console.error('Fetch error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

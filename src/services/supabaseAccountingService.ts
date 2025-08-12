@@ -183,12 +183,19 @@ export class SupabaseAccountingService {
     companyName: string
   ): Promise<{ company: Company | null; error: string | null }> {
     try {
+      // Check if user is authenticated first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('createOrGetCompany: User not authenticated');
+        return { company: null, error: 'User not authenticated' };
+      }
+
       // First, try to find existing company
       const { data: existingCompany, error: findError } = await supabase
         .from("companies")
         .select("*")
         .eq("company_name", companyName)
-        .single();
+        .maybeSingle();
 
       if (existingCompany && !findError) {
         return { company: existingCompany, error: null };
@@ -202,11 +209,13 @@ export class SupabaseAccountingService {
         .single();
 
       if (createError) {
+        console.error('createOrGetCompany: Error creating company:', createError);
         return { company: null, error: createError.message };
       }
 
       return { company: newCompany, error: null };
     } catch (error) {
+      console.error('createOrGetCompany: Exception:', error);
       return { company: null, error: (error as Error).message };
     }
   }
@@ -222,6 +231,13 @@ export class SupabaseAccountingService {
     region: string
   ): Promise<{ territory: Territory | null; error: string | null }> {
     try {
+      // Check if user is authenticated first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('createOrGetTerritory: User not authenticated');
+        return { territory: null, error: 'User not authenticated' };
+      }
+
       // First, try to find existing territory
       const { data: existingTerritory, error: findError } = await supabase
         .from("territory")
@@ -229,17 +245,16 @@ export class SupabaseAccountingService {
         .eq("company_id", companyId)
         .eq("country", country)
         .eq("region", region)
-        .single();
+        .maybeSingle();
 
       if (existingTerritory && !findError) {
         return { territory: existingTerritory, error: null };
       }
 
-      // Get the next territory_key for this company
+      // Get the next territory_key globally
       const { data: maxTerritoryKey } = await supabase
         .from("territory")
         .select("territory_key")
-        .eq("company_id", companyId)
         .order("territory_key", { ascending: false })
         .limit(1)
         .single();
@@ -263,11 +278,27 @@ export class SupabaseAccountingService {
         .single();
 
       if (createError) {
+        console.error('createOrGetTerritory: Error creating territory:', createError);
+        // Handle race condition - check if territory was created by another process
+        if (createError.code === '23505') { // Unique constraint violation
+          const { data: existingTerritory, error: findError2 } = await supabase
+            .from("territory")
+            .select("*")
+            .eq("company_id", companyId)
+            .eq("country", country)
+            .eq("region", region)
+            .maybeSingle();
+          
+          if (existingTerritory && !findError2) {
+            return { territory: existingTerritory, error: null };
+          }
+        }
         return { territory: null, error: createError.message };
       }
 
       return { territory: newTerritory, error: null };
     } catch (error) {
+      console.error('createOrGetTerritory: Exception:', error);
       return { territory: null, error: (error as Error).message };
     }
   }
@@ -288,13 +319,20 @@ export class SupabaseAccountingService {
     }
   ): Promise<{ calendar: Calendar | null; error: string | null }> {
     try {
+      // Check if user is authenticated first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('createOrGetCalendar: User not authenticated');
+        return { calendar: null, error: 'User not authenticated' };
+      }
+
       // First, try to find existing calendar entry
       const { data: existingCalendar, error: findError } = await supabase
         .from("calendar")
         .select("*")
         .eq("company_id", companyId)
         .eq("date", calendarData.date)
-        .single();
+        .maybeSingle();
 
       if (existingCalendar && !findError) {
         return { calendar: existingCalendar, error: null };
@@ -317,11 +355,13 @@ export class SupabaseAccountingService {
         .single();
 
       if (createError) {
+        console.error('createOrGetCalendar: Error creating calendar:', createError);
         return { calendar: null, error: createError.message };
       }
 
       return { calendar: newCalendar, error: null };
     } catch (error) {
+      console.error('createOrGetCalendar: Exception:', error);
       return { calendar: null, error: (error as Error).message };
     }
   }
@@ -344,13 +384,20 @@ export class SupabaseAccountingService {
     }
   ): Promise<{ account: ChartOfAccounts | null; error: string | null }> {
     try {
+      // Check if user is authenticated first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('createOrGetChartOfAccounts: User not authenticated');
+        return { account: null, error: 'User not authenticated' };
+      }
+
       // First, try to find existing account
       const { data: existingAccount, error: findError } = await supabase
         .from("chartofaccounts")
         .select("*")
         .eq("company_id", companyId)
         .eq("account_key", accountData.account_key)
-        .single();
+        .maybeSingle();
 
       if (existingAccount && !findError) {
         return { account: existingAccount, error: null };
@@ -375,11 +422,13 @@ export class SupabaseAccountingService {
         .single();
 
       if (createError) {
+        console.error('createOrGetChartOfAccounts: Error creating chart of accounts:', createError);
         return { account: null, error: createError.message };
       }
 
       return { account: newAccount, error: null };
     } catch (error) {
+      console.error('createOrGetChartOfAccounts: Exception:', error);
       return { account: null, error: (error as Error).message };
     }
   }
@@ -401,6 +450,26 @@ export class SupabaseAccountingService {
     }
   ): Promise<{ entry: GeneralLedger | null; error: string | null }> {
     try {
+      // Check if user is authenticated first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('createGeneralLedgerEntry: User not authenticated');
+        return { entry: null, error: 'User not authenticated' };
+      }
+
+      // First, ensure the account exists in chartofaccounts for this company
+      const { data: accountExists, error: accountCheckError } = await supabase
+        .from("chartofaccounts")
+        .select("account_key")
+        .eq("company_id", companyId)
+        .eq("account_key", entryData.account_key)
+        .single();
+
+      if (!accountExists || accountCheckError) {
+        console.error('createGeneralLedgerEntry: Account key not found in chartofaccounts for this company:', entryData.account_key, accountCheckError);
+        return { entry: null, error: `Account key ${entryData.account_key} not found for company ${companyId}` };
+      }
+
       const { data: newEntry, error: createError } = await supabase
         .from("generalledger")
         .insert([
@@ -414,11 +483,13 @@ export class SupabaseAccountingService {
         .single();
 
       if (createError) {
+        console.error('createGeneralLedgerEntry: Error creating general ledger entry:', createError);
         return { entry: null, error: createError.message };
       }
 
       return { entry: newEntry, error: null };
     } catch (error) {
+      console.error('createGeneralLedgerEntry: Exception:', error);
       return { entry: null, error: (error as Error).message };
     }
   }
@@ -439,6 +510,13 @@ export class SupabaseAccountingService {
     try {
       // Skip user validation for demo mode
       if (userId !== "demo-user") {
+        // Check if user is authenticated first
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.warn('saveTransactionData: User not authenticated');
+          return { success: false, error: 'User not authenticated' };
+        }
+
         // Get user information for real users
         const { data: user, error: userError } = await supabase
           .from("numerizamauth")
@@ -448,22 +526,29 @@ export class SupabaseAccountingService {
           .single();
 
         if (userError || !user) {
+          console.error('saveTransactionData: User not found or not approved:', userError);
           return { success: false, error: "User not found or not approved" };
         }
       }
 
+      console.log('saveTransactionData: Starting to save transaction data...');
+      
       // 1. Create or get company
+      console.log('saveTransactionData: Creating or getting company:', transactionData.company_data.company_name);
       const { company, error: companyError } = await this.createOrGetCompany(
         transactionData.company_data.company_name
       );
       if (companyError || !company) {
+        console.error('saveTransactionData: Failed to create company:', companyError);
         return {
           success: false,
           error: companyError || "Failed to create company",
         };
       }
+      console.log('saveTransactionData: Company created/found:', company.company_id);
 
       // 2. Create or get territory
+      console.log('saveTransactionData: Creating or getting territory:', transactionData.territory_data.country, transactionData.territory_data.region);
       const { territory, error: territoryError } =
         await this.createOrGetTerritory(
           company.company_id,
@@ -471,41 +556,58 @@ export class SupabaseAccountingService {
           transactionData.territory_data.region
         );
       if (territoryError || !territory) {
+        console.error('saveTransactionData: Failed to create territory:', territoryError);
         return {
           success: false,
           error: territoryError || "Failed to create territory",
         };
       }
+      console.log('saveTransactionData: Territory created/found:', territory.territory_key);
 
       // 3. Create or get calendar entry
+      console.log('saveTransactionData: Creating or getting calendar:', transactionData.calendar_data.date);
       const { calendar, error: calendarError } = await this.createOrGetCalendar(
         company.company_id,
         transactionData.calendar_data
       );
       if (calendarError || !calendar) {
+        console.error('saveTransactionData: Failed to create calendar:', calendarError);
         return {
           success: false,
           error: calendarError || "Failed to create calendar entry",
         };
       }
+      console.log('saveTransactionData: Calendar created/found:', calendar.calendar_id);
 
       // 4. Create or get chart of accounts entries
+      console.log('saveTransactionData: Creating chart of accounts entries...');
       for (const accountData of transactionData.chart_of_accounts_data) {
+        console.log('saveTransactionData: Creating account:', accountData.account_key, accountData.account);
         const { error: accountError } = await this.createOrGetChartOfAccounts(
           company.company_id,
           accountData
         );
         if (accountError) {
+          console.error('saveTransactionData: Failed to create chart of accounts:', accountError);
           return {
             success: false,
             error: `Failed to create chart of accounts: ${accountError}`,
           };
         }
+        console.log('saveTransactionData: Account created/found:', accountData.account_key);
       }
 
       // 5. Create general ledger entries
       const entryNumbers: number[] = [];
       for (const ledgerEntry of transactionData.general_ledger_entries) {
+        console.log('saveTransactionData: Creating general ledger entry:', {
+          company_id: company.company_id,
+          territory_key: territory.territory_key,
+          account_key: ledgerEntry.account_key,
+          date: transactionData.calendar_data.date,
+          type: ledgerEntry.type
+        });
+
         const { entry, error: ledgerError } =
           await this.createGeneralLedgerEntry(
             company.company_id,
@@ -520,17 +622,23 @@ export class SupabaseAccountingService {
           );
 
         if (ledgerError || !entry) {
+          console.error('saveTransactionData: Failed to create general ledger entry:', ledgerError);
           return {
             success: false,
             error: `Failed to create general ledger entry: ${ledgerError}`,
           };
         }
 
-        entryNumbers.push(entry.entryno);
+        if (entry) {
+          console.log('saveTransactionData: Successfully created general ledger entry:', entry.entryno);
+          entryNumbers.push(entry.entryno);
+        }
       }
 
+      console.log('saveTransactionData: Successfully saved all transaction data');
       return { success: true, error: null, entryNumbers };
     } catch (error) {
+      console.error('saveTransactionData: Exception in save process:', error);
       return { success: false, error: (error as Error).message };
     }
   }
@@ -545,17 +653,34 @@ export class SupabaseAccountingService {
     error: string | null;
   }> {
     try {
+      // Check if user is authenticated first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('getCompanies: User not authenticated');
+        return { companies: null, error: 'User not authenticated' };
+      }
+
+      console.log('getCompanies: Making request to companies table...');
       const { data: companies, error } = await supabase
         .from("companies")
         .select("*")
         .order("company_name");
 
       if (error) {
+        console.error('getCompanies: Error fetching companies:', error);
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
         return { companies: null, error: error.message };
       }
 
+      console.log('getCompanies: Successfully fetched', companies?.length || 0, 'companies');
       return { companies, error: null };
     } catch (error) {
+      console.error('getCompanies: Exception in getCompanies:', error);
       return { companies: null, error: (error as Error).message };
     }
   }
@@ -568,6 +693,13 @@ export class SupabaseAccountingService {
     error: string | null;
   }> {
     try {
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('User not authenticated, cannot fetch available years');
+        return { years: [], error: 'User not authenticated' };
+      }
+
       const { data, error } = await supabase
         .from("generalledger")
         .select("date")
@@ -602,16 +734,32 @@ export class SupabaseAccountingService {
     error: string | null;
   }> {
     try {
+      // Check if user is authenticated first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('getAvailableCountries: User not authenticated');
+        return { countries: null, error: 'User not authenticated' };
+      }
+
+      console.log('getAvailableCountries: Making request to territory table...');
       const { data, error } = await supabase
         .from("territory")
         .select("country")
         .not("country", "is", null);
 
       if (error) {
+        console.error('getAvailableCountries: Error fetching countries:', error);
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
         return { countries: null, error: error.message };
       }
 
       if (!data || data.length === 0) {
+        console.log('getAvailableCountries: No countries found');
         return { countries: [], error: null };
       }
 
@@ -620,8 +768,10 @@ export class SupabaseAccountingService {
         .filter((country) => country && country.trim() !== "")
         .sort();
 
+      console.log('getAvailableCountries: Successfully fetched', countries.length, 'countries');
       return { countries, error: null };
     } catch (error) {
+      console.error('getAvailableCountries: Exception in getAvailableCountries:', error);
       return { countries: null, error: (error as Error).message };
     }
   }
@@ -637,6 +787,13 @@ export class SupabaseAccountingService {
     country?: string
   ): Promise<{ data: any[] | null; error: string | null }> {
     try {
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('User not authenticated, cannot generate income statement');
+        return { data: [], error: 'User not authenticated' };
+      }
+
       // First, get the company ID
       const { data: company, error: companyError } = await supabase
         .from("companies")
@@ -758,6 +915,13 @@ export class SupabaseAccountingService {
     country?: string
   ): Promise<{ data: any[] | null; error: string | null }> {
     try {
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('User not authenticated, cannot generate balance sheet');
+        return { data: [], error: 'User not authenticated' };
+      }
+
       // Convert companyId to number
       const companyIdNum = parseInt(companyId);
       if (isNaN(companyIdNum)) {
@@ -902,6 +1066,13 @@ export class SupabaseAccountingService {
     year: number
   ): Promise<{ data: any[] | null; error: string | null }> {
     try {
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('User not authenticated, cannot fetch transaction details');
+        return { data: [], error: 'User not authenticated' };
+      }
+
       // First, get the company ID
       const { data: company, error: companyError } = await supabase
         .from("companies")
@@ -967,6 +1138,13 @@ export class SupabaseAccountingService {
     error: string | null;
   }> {
     try {
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('User not authenticated, cannot fetch revenue by year');
+        return { data: [], error: 'User not authenticated' };
+      }
+
       const { data, error } = await supabase.rpc('get_revenue_by_year');
 
       if (error) {
@@ -992,6 +1170,13 @@ export class SupabaseAccountingService {
     error: string | null;
   }> {
     try {
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('User not authenticated, cannot fetch revenue growth');
+        return { data: [], error: 'User not authenticated' };
+      }
+
       const { data, error } = await supabase.rpc('get_revenue_growth');
 
       if (error) {
@@ -1009,6 +1194,13 @@ export class SupabaseAccountingService {
    */
   async getCurrentYearRevenue(): Promise<number> {
     try {
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('User not authenticated, cannot fetch current year revenue');
+        return 0;
+      }
+
       const currentYear = new Date().getFullYear();
       const { data, error } = await supabase
         .from('generalledger')
@@ -1038,6 +1230,13 @@ export class SupabaseAccountingService {
    */
   async getCurrentYearExpenses(): Promise<number> {
     try {
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('User not authenticated, cannot fetch current year expenses');
+        return 0;
+      }
+
       const { data, error } = await supabase.rpc('get_current_year_expenses');
 
       if (error) {
@@ -1057,6 +1256,13 @@ export class SupabaseAccountingService {
    */
   async getCurrentYearProfit(): Promise<number> {
     try {
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('User not authenticated, cannot fetch current year profit');
+        return 0;
+      }
+
       const { data, error } = await supabase.rpc('get_current_year_profit');
 
       if (error) {
@@ -1076,6 +1282,13 @@ export class SupabaseAccountingService {
    */
   async getCurrentYearCashFlow(): Promise<number> {
     try {
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('User not authenticated, cannot fetch current year cash flow');
+        return 0;
+      }
+
       const { data, error } = await supabase.rpc('get_current_year_cash_flow');
 
       if (error) {
@@ -1103,6 +1316,13 @@ export class SupabaseAccountingService {
     error: string | null;
   }> {
     try {
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('User not authenticated, cannot fetch expenses growth');
+        return { data: [], error: 'User not authenticated' };
+      }
+
       const { data, error } = await supabase.rpc('get_expenses_growth');
 
       if (error) {
@@ -1128,6 +1348,13 @@ export class SupabaseAccountingService {
     error: string | null;
   }> {
     try {
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('User not authenticated, cannot fetch profit growth');
+        return { data: [], error: 'User not authenticated' };
+      }
+
       const { data, error } = await supabase.rpc('get_profit_growth');
 
       if (error) {
@@ -1153,6 +1380,13 @@ export class SupabaseAccountingService {
     error: string | null;
   }> {
     try {
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('User not authenticated, cannot fetch cash flow growth');
+        return { data: [], error: 'User not authenticated' };
+      }
+
       const { data, error } = await supabase.rpc('get_cash_flow_growth');
 
       if (error) {

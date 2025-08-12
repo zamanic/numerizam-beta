@@ -71,6 +71,39 @@ interface Transaction {
   errors?: string[];
 }
 
+interface CompanyData {
+  company_name: string;
+}
+
+interface TerritoryData {
+  country: string;
+  region: string;
+}
+
+interface CalendarData {
+  date: string;
+  year: string;
+  quarter: string;
+  month: string;
+  day: string;
+}
+
+interface ChartOfAccountsData {
+  account_key: string;
+  report: string;
+  class: string;
+  subclass: string;
+  account: string;
+}
+
+interface GeneralLedgerData {
+  date: string;
+  account_key: string;
+  details: string;
+  amount: number;
+  type: "Debit" | "Credit";
+}
+
 interface CompanyInfo {
   name: string;
   address: string;
@@ -115,6 +148,12 @@ interface ConfirmTransactionDialogProps {
   error?: string | null;
   isProcessing?: boolean;
   isDemoMode?: boolean;
+  // New structured data props
+  companyData?: CompanyData;
+  territoryData?: TerritoryData;
+  calendarData?: CalendarData;
+  chartOfAccountsData?: ChartOfAccountsData[];
+  generalLedgerData?: GeneralLedgerData[];
 }
 
 export const ConfirmTransactionDialog: React.FC<
@@ -132,6 +171,12 @@ export const ConfirmTransactionDialog: React.FC<
   error = null,
   isProcessing = false,
   isDemoMode = false,
+  // New structured data props
+  companyData: initialCompanyData,
+  territoryData: initialTerritoryData,
+  calendarData: initialCalendarData,
+  chartOfAccountsData: initialChartOfAccountsData,
+  generalLedgerData: initialGeneralLedgerData,
 }) => {
   const [transactions, setTransactions] =
     useState<Transaction[]>(initialTransactions);
@@ -144,6 +189,41 @@ export const ConfirmTransactionDialog: React.FC<
     useState<CalendarInfo>(initialCalendarInfo);
   const [chartOfAccounts, setChartOfAccounts] = useState<ChartOfAccounts>(
     initialChartOfAccounts
+  );
+
+  // New structured data state
+  const [companyData, setCompanyData] = useState<CompanyData>(
+    initialCompanyData || { company_name: "Patrick Incitti" }
+  );
+  const [territoryData, setTerritoryData] = useState<TerritoryData>(
+    initialTerritoryData || { country: "Bangladesh", region: "Asia" }
+  );
+  const [calendarData, setCalendarData] = useState<CalendarData>(
+    initialCalendarData || { date: "2025-01-24", year: "2025", quarter: "Q1", month: "January", day: "Friday" }
+  );
+  const [chartOfAccountsData, setChartOfAccountsData] = useState<ChartOfAccountsData[]>(
+    initialChartOfAccountsData || [
+      { account_key: "1000", report: "Balance Sheet", class: "Asset", subclass: "Current Asset", account: "Cash" },
+      { account_key: "3000", report: "Balance Sheet", class: "Owner's Equity", subclass: "Owner's Equity", account: "Owner's Capital" },
+      { account_key: "1030", report: "Balance Sheet", class: "Asset", subclass: "Current Asset", account: "Office supplies" },
+      { account_key: "2000", report: "Balance Sheet", class: "Liability", subclass: "Current Liability", account: "Accounts Payable" },
+      { account_key: "4000", report: "Profit and Loss", class: "Revenue", subclass: "Operating Revenue", account: "Fees Earned" },
+      { account_key: "3001", report: "Balance Sheet", class: "Owner's Equity", subclass: "Owner's Equity", account: "Withdrawals" },
+    ]
+  );
+  const [generalLedgerData, setGeneralLedgerData] = useState<GeneralLedgerData[]>(
+    initialGeneralLedgerData || [
+      { date: "2025-01-24", account_key: "1000", details: "Owner investment to open law practice", amount: 999, type: "Debit" },
+      { date: "2025-01-24", account_key: "3000", details: "Owner investment to open law practice", amount: 999, type: "Credit" },
+      { date: "2025-01-24", account_key: "1030", details: "Bought office supplies on account", amount: 999, type: "Debit" },
+      { date: "2025-01-24", account_key: "2000", details: "Bought office supplies on account", amount: 999, type: "Credit" },
+      { date: "2025-01-24", account_key: "1000", details: "Cash received as fees earned", amount: 999, type: "Debit" },
+      { date: "2025-01-24", account_key: "4000", details: "Fees earned during the month", amount: 999, type: "Credit" },
+      { date: "2025-01-24", account_key: "2000", details: "Payment on account for office supplies", amount: 999, type: "Debit" },
+      { date: "2025-01-24", account_key: "1000", details: "Payment on account for office supplies", amount: 999, type: "Credit" },
+      { date: "2025-01-24", account_key: "3001", details: "Owner withdrawal for personal use", amount: 999, type: "Debit" },
+      { date: "2025-01-24", account_key: "1000", details: "Owner withdrawal for personal use", amount: 999, type: "Credit" },
+    ]
   );
 
   // Sync props with local state
@@ -171,6 +251,42 @@ export const ConfirmTransactionDialog: React.FC<
     console.log("ConfirmTransactionDialog: Received chartOfAccounts prop:", initialChartOfAccounts);
     setChartOfAccounts(initialChartOfAccounts);
   }, [initialChartOfAccounts]);
+
+  // Sync new structured data props with local state
+  useEffect(() => {
+    console.log("ConfirmTransactionDialog: Received companyData prop:", initialCompanyData);
+    if (initialCompanyData) {
+      setCompanyData(initialCompanyData);
+    }
+  }, [initialCompanyData]);
+
+  useEffect(() => {
+    console.log("ConfirmTransactionDialog: Received territoryData prop:", initialTerritoryData);
+    if (initialTerritoryData) {
+      setTerritoryData(initialTerritoryData);
+    }
+  }, [initialTerritoryData]);
+
+  useEffect(() => {
+    console.log("ConfirmTransactionDialog: Received calendarData prop:", initialCalendarData);
+    if (initialCalendarData) {
+      setCalendarData(initialCalendarData);
+    }
+  }, [initialCalendarData]);
+
+  useEffect(() => {
+    console.log("ConfirmTransactionDialog: Received chartOfAccountsData prop:", initialChartOfAccountsData);
+    if (initialChartOfAccountsData && initialChartOfAccountsData.length > 0) {
+      setChartOfAccountsData(initialChartOfAccountsData);
+    }
+  }, [initialChartOfAccountsData]);
+
+  useEffect(() => {
+    console.log("ConfirmTransactionDialog: Received generalLedgerData prop:", initialGeneralLedgerData);
+    if (initialGeneralLedgerData && initialGeneralLedgerData.length > 0) {
+      setGeneralLedgerData(initialGeneralLedgerData);
+    }
+  }, [initialGeneralLedgerData]);
 
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(
     new Set()
@@ -200,18 +316,19 @@ export const ConfirmTransactionDialog: React.FC<
   });
 
   // Calculate totals and validation
-  const totals = useMemo(() => {
-    const selectedTxns =
-      saveOption === "selected"
-        ? transactions.filter((t) => selectedTransactions.has(t.id))
-        : transactions;
+  const selectedTxns = useMemo(() => {
+    return saveOption === "selected"
+      ? transactions.filter((t) => selectedTransactions.has(t.id))
+      : transactions;
+  }, [transactions, selectedTransactions, saveOption]);
 
-    const totalDebit = selectedTxns.reduce((sum, t) => sum + t.debit, 0);
-    const totalCredit = selectedTxns.reduce((sum, t) => sum + t.credit, 0);
+  const totals = useMemo(() => {
+    const totalDebit = selectedTxns.reduce((sum, t) => sum + (Number(t.debit) || 0), 0);
+    const totalCredit = selectedTxns.reduce((sum, t) => sum + (Number(t.credit) || 0), 0);
     const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
 
     return { totalDebit, totalCredit, isBalanced, count: selectedTxns.length };
-  }, [transactions, selectedTransactions, saveOption]);
+  }, [selectedTxns]);
 
   // Real-time validation
   useEffect(() => {
@@ -288,21 +405,18 @@ export const ConfirmTransactionDialog: React.FC<
 
     switch (action) {
       case "duplicate":
-        const selectedTxns = transactions.filter((t) =>
-          selectedTransactions.has(t.id)
-        );
         const duplicatedTxns = selectedTxns.map((t) => ({
-          ...t,
-          id: `${t.id}_copy_${Date.now()}`,
-          description: `Copy of ${t.description}`,
-          isModified: true,
-        }));
-        setTransactions((prev) => [...prev, ...duplicatedTxns]);
-        setSnackbar({
-          open: true,
-          message: `Duplicated ${selectedTxns.length} transactions`,
-          severity: "success",
-        });
+        ...t,
+        id: `${t.id}_copy_${Date.now()}`,
+        description: `Copy of ${t.description}`,
+        isModified: true,
+      }));
+      setTransactions((prev) => [...prev, ...duplicatedTxns]);
+      setSnackbar({
+        open: true,
+        message: `Duplicated ${selectedTxns.length} transactions`,
+        severity: "success",
+      });
         break;
 
       case "delete":
@@ -338,70 +452,83 @@ export const ConfirmTransactionDialog: React.FC<
       return;
     }
 
-    if (!totals.isBalanced) {
-      setSnackbar({
-        open: true,
-        message: "Debits and credits must be balanced",
-        severity: "error",
-      });
-      return;
-    }
-
+    // Allow saving even if unbalanced, but show confirmation dialog with warning
     setShowConfirmation(true);
   };
 
   const handleConfirmSave = () => {
-    const selectedTxns =
-      saveOption === "selected"
-        ? transactions.filter((t) => selectedTransactions.has(t.id))
-        : transactions;
 
-    // Transform data to match TransactionData interface expected by supabaseAccountingService
+    // Ensure date is never undefined or empty and is in valid format
+    const today = new Date().toISOString().split("T")[0];
+    const validDate = calendarData.date && calendarData.date.trim() !== "" && 
+                     calendarData.date.toLowerCase() !== "undefined" && 
+                     /^\d{4}-\d{2}-\d{2}$/.test(calendarData.date.trim())
+      ? calendarData.date.trim()
+      : (transactions[0]?.date || today);
+    
+    // Ensure year is never undefined or empty
+    const validYear = calendarData.year && calendarData.year.trim() !== "" && calendarData.year.toLowerCase() !== "undefined"
+      ? calendarData.year.trim()
+      : new Date(validDate).getFullYear().toString();
+    
+    // Ensure quarter is never undefined or empty
+    const validQuarter = calendarData.quarter && calendarData.quarter.trim() !== "" && calendarData.quarter.toLowerCase() !== "undefined"
+      ? calendarData.quarter.trim()
+      : `Q${Math.floor((new Date(validDate).getMonth() + 3) / 3)}`;
+    
+    // Ensure month is never undefined or empty
+    const validMonth = calendarData.month && calendarData.month.trim() !== "" && calendarData.month.toLowerCase() !== "undefined"
+      ? calendarData.month.trim()
+      : new Date(validDate).toLocaleString("default", { month: "long" });
+    
+    // Ensure day is never undefined or empty
+    const validDay = calendarData.day && calendarData.day.trim() !== "" && calendarData.day.toLowerCase() !== "undefined"
+      ? calendarData.day.trim()
+      : new Date(validDate).toLocaleString("default", { weekday: "long" });
+
+    // Transform data to match TransactionPayloadSerializer expected by backend
     const dataToSave = {
       company_data: {
         company_name: companyInfo.name,
       },
       territory_data: {
-        country: territoryDetails.region === "Asia" ? "Bangladesh" : "USA",
-        region: territoryDetails.region,
+        Country: territoryDetails.region === "Asia" ? "Bangladesh" : "USA",
+        Region: territoryDetails.region,
       },
       calendar_data: {
-        date: selectedTxns[0]?.date || new Date().toISOString().split("T")[0],
-        year: new Date(selectedTxns[0]?.date || new Date()).getFullYear(),
-        quarter: calendarInfo.quarter || "Q1",
-        month: new Date(selectedTxns[0]?.date || new Date()).toLocaleString(
-          "default",
-          { month: "long" }
-        ),
-        day: new Date(selectedTxns[0]?.date || new Date()).toLocaleString(
-          "default",
-          { weekday: "long" }
-        ),
+        date: validDate,
+        year: parseInt(validYear) || new Date(transactions[0]?.date || new Date()).getFullYear(),
+        quarter: validQuarter,
+        month: validMonth,
+        day: validDay,
       },
       chart_of_accounts_data: chartOfAccounts.accounts.map((acc) => ({
-        account_key: parseInt(acc.code) || 1000, // Default to 1000 if parsing fails
-        report:
+        Account_key: parseInt(acc.code) || 1000, // Default to 1000 if parsing fails
+        Report:
           acc.type === "Asset" ||
           acc.type === "Liability" ||
           acc.type === "Equity"
             ? "Balance Sheet"
             : "Profit and Loss",
-        class: acc.type,
-        subclass: acc.type,
-        subclass2: acc.type,
-        account: acc.name,
-        subaccount: acc.name,
+        Class: acc.type,
+        SubClass: acc.type,
+        SubClass2: acc.type,
+        Account: acc.name,
+        SubAccount: acc.name,
       })),
       general_ledger_entries: selectedTxns.map((txn) => {
         // Extract account key from account string (format: "1000 - Cash")
         const accountMatch = txn.account.match(/^(\d+)/);
         const accountKey = accountMatch ? parseInt(accountMatch[1]) : 1000;
         
+        const debitAmount = Number(txn.debit) || 0;
+        const creditAmount = Number(txn.credit) || 0;
+        
         return {
-          account_key: accountKey,
-          details: txn.description,
-          amount: txn.debit || txn.credit,
-          type: (txn.debit > 0 ? "Debit" : "Credit") as "Debit" | "Credit",
+          Account_key: accountKey,
+          Details: txn.description,
+          Amount: debitAmount || creditAmount,
+          Type: (debitAmount > 0 ? "Debit" : "Credit") as "Debit" | "Credit",
         };
       }),
       // Additional metadata for the dialog (not part of TransactionData interface)
@@ -550,58 +677,17 @@ export const ConfirmTransactionDialog: React.FC<
                 <AccordionDetails>
                   <Card variant="outlined">
                     <CardContent>
-                      <Box
-                        sx={{
-                          display: "grid",
-                          gridTemplateColumns:
-                            "repeat(auto-fit, minmax(250px, 1fr))",
-                          gap: 2,
-                        }}
-                      >
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                         <InlineEditField
                           label="Company Name"
-                          value={companyInfo.name}
+                          value={companyData.company_name}
+                          placeholder={transactions[0]?.description ? transactions[0].description.split(' ')[0] + " Corp" : "Enter company name"}
                           onSave={(value) =>
-                            setCompanyInfo((prev) => ({
+                            setCompanyData((prev) => ({
                               ...prev,
-                              name: value.toString(),
+                              company_name: value.toString(),
                             }))
                           }
-                          required
-                        />
-                        <InlineEditField
-                          label="Address"
-                          value={companyInfo.address}
-                          onSave={(value) =>
-                            setCompanyInfo((prev) => ({
-                              ...prev,
-                              address: value.toString(),
-                            }))
-                          }
-                          multiline
-                          rows={2}
-                        />
-                        <InlineEditField
-                          label="Tax ID"
-                          value={companyInfo.taxId}
-                          onSave={(value) =>
-                            setCompanyInfo((prev) => ({
-                              ...prev,
-                              taxId: value.toString(),
-                            }))
-                          }
-                          required
-                        />
-                        <InlineEditField
-                          label="Fiscal Year"
-                          value={companyInfo.fiscalYear}
-                          onSave={(value) =>
-                            setCompanyInfo((prev) => ({
-                              ...prev,
-                              fiscalYear: value.toString(),
-                            }))
-                          }
-                          required
                         />
                       </Box>
                     </CardContent>
@@ -609,7 +695,7 @@ export const ConfirmTransactionDialog: React.FC<
                 </AccordionDetails>
               </Accordion>
 
-              {/* Territory Details */}
+              {/* Territory Information */}
               <Accordion
                 expanded={expandedSections.has("territory")}
                 onChange={() => toggleSection("territory")}
@@ -617,52 +703,35 @@ export const ConfirmTransactionDialog: React.FC<
               >
                 <AccordionSummary expandIcon={<ExpandMore />}>
                   {renderSectionHeader(
-                    "Territory Details",
+                    "Territory Information",
                     <AccountBalance color="primary" />
                   )}
                 </AccordionSummary>
                 <AccordionDetails>
                   <Card variant="outlined">
                     <CardContent>
-                      <Box
-                        sx={{
-                          display: "grid",
-                          gridTemplateColumns:
-                            "repeat(auto-fit, minmax(200px, 1fr))",
-                          gap: 2,
-                        }}
-                      >
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <InlineEditField
+                          label="Country"
+                          value={territoryData.country}
+                          placeholder="United States"
+                          onSave={(value) =>
+                            setTerritoryData((prev) => ({
+                              ...prev,
+                              country: value.toString(),
+                            }))
+                          }
+                        />
                         <InlineEditField
                           label="Region"
-                          value={territoryDetails.region}
+                          value={territoryData.region}
+                          placeholder="California, New York, etc."
                           onSave={(value) =>
-                            setTerritoryDetails((prev) => ({
+                            setTerritoryData((prev) => ({
                               ...prev,
                               region: value.toString(),
                             }))
                           }
-                        />
-                        <InlineEditField
-                          label="Currency"
-                          value={territoryDetails.currency}
-                          onSave={(value) =>
-                            setTerritoryDetails((prev) => ({
-                              ...prev,
-                              currency: value.toString(),
-                            }))
-                          }
-                        />
-                        <InlineEditField
-                          label="Tax Rate"
-                          type="number"
-                          value={territoryDetails.taxRate}
-                          onSave={(value) =>
-                            setTerritoryDetails((prev) => ({
-                              ...prev,
-                              taxRate: Number(value),
-                            }))
-                          }
-                          suffix="%"
                         />
                       </Box>
                     </CardContent>
@@ -685,53 +754,89 @@ export const ConfirmTransactionDialog: React.FC<
                 <AccordionDetails>
                   <Card variant="outlined">
                     <CardContent>
-                      <Box
-                        sx={{
-                          display: "grid",
-                          gridTemplateColumns:
-                            "repeat(auto-fit, minmax(200px, 1fr))",
-                          gap: 2,
-                        }}
-                      >
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                         <InlineEditField
-                          label="Period"
-                          value={calendarInfo.period}
-                          onSave={(value) =>
-                            setCalendarInfo((prev) => ({
+                          label="Date"
+                          value={calendarData.date}
+                          placeholder="YYYY-MM-DD (e.g., 2025-01-24)"
+                          onSave={(value) => {
+                            const validDate = value && value.toString().trim() !== "" && value.toString().toLowerCase() !== "undefined"
+                              ? value.toString().trim()
+                              : (transactions[0]?.date || new Date().toISOString().split("T")[0]);
+                            setCalendarData((prev) => ({
                               ...prev,
-                              period: value.toString(),
-                            }))
-                          }
+                              date: validDate,
+                            }));
+                          }}
+                          validation={(value) => {
+                            const dateStr = value?.toString().trim();
+                            if (!dateStr || dateStr === "" || dateStr.toLowerCase() === "undefined") {
+                              return "Date is required";
+                            }
+                            // Basic date format validation
+                            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                            if (!dateRegex.test(dateStr)) {
+                              return "Date must be in YYYY-MM-DD format";
+                            }
+                            return null;
+                          }}
+                        />
+                        <InlineEditField
+                          label="Year"
+                          value={calendarData.year}
+                          placeholder="YYYY (e.g., 2025)"
+                          onSave={(value) => {
+                            const validYear = value && value.toString().trim() !== "" && value.toString().toLowerCase() !== "undefined"
+                              ? value.toString() 
+                              : (transactions[0]?.date ? new Date(transactions[0].date).getFullYear().toString() : new Date().getFullYear().toString());
+                            setCalendarData((prev) => ({
+                              ...prev,
+                              year: validYear,
+                            }));
+                          }}
                         />
                         <InlineEditField
                           label="Quarter"
-                          value={calendarInfo.quarter}
-                          onSave={(value) =>
-                            setCalendarInfo((prev) => ({
+                          value={calendarData.quarter}
+                          placeholder="QX (e.g., Q1, Q2, Q3, Q4)"
+                          onSave={(value) => {
+                            const validQuarter = value && value.toString().trim() !== "" && value.toString().toLowerCase() !== "undefined"
+                              ? value.toString() 
+                              : (transactions[0]?.date ? `Q${Math.floor((new Date(transactions[0].date).getMonth() + 3) / 3)}` : "Q1");
+                            setCalendarData((prev) => ({
                               ...prev,
-                              quarter: value.toString(),
-                            }))
-                          }
+                              quarter: validQuarter,
+                            }));
+                          }}
                         />
                         <InlineEditField
-                          label="Fiscal Year"
-                          value={calendarInfo.fiscalYear}
-                          onSave={(value) =>
-                            setCalendarInfo((prev) => ({
+                          label="Month"
+                          value={calendarData.month}
+                          placeholder="Month name (e.g., January, February)"
+                          onSave={(value) => {
+                            const validMonth = value && value.toString().trim() !== "" && value.toString().toLowerCase() !== "undefined"
+                              ? value.toString() 
+                              : (transactions[0]?.date ? new Date(transactions[0].date).toLocaleString("default", { month: "long" }) : new Date().toLocaleString("default", { month: "long" }));
+                            setCalendarData((prev) => ({
                               ...prev,
-                              fiscalYear: value.toString(),
-                            }))
-                          }
+                              month: validMonth,
+                            }));
+                          }}
                         />
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                        >
-                          <Info color="info" />
-                          <Typography variant="body2">
-                            {calendarInfo.daysRemaining} days remaining in
-                            period
-                          </Typography>
-                        </Box>
+                        <InlineEditField
+                          label="Day"
+                          value={calendarData.day}
+                          placeholder="Weekday name (e.g., Monday, Tuesday)"
+                          onSave={(value) => {
+                            const validDay = value && value.toString().trim() !== "" && value.toString().toLowerCase() !== "undefined"
+                              ? value.toString() 
+                              : (transactions[0]?.date ? new Date(transactions[0].date).toLocaleString("default", { weekday: "long" }) : new Date().toLocaleString("default", { weekday: "long" }));
+                            setCalendarData((prev) => ({
+                              ...prev,
+                              day: validDay,
+                            }));
+                          }}
+                        />
                       </Box>
                     </CardContent>
                   </Card>
@@ -748,7 +853,7 @@ export const ConfirmTransactionDialog: React.FC<
                   {renderSectionHeader(
                     "Chart of Accounts",
                     <Assessment color="primary" />,
-                    chartOfAccounts.accounts.length
+                    chartOfAccountsData.length
                   )}
                 </AccordionSummary>
                 <AccordionDetails>
@@ -756,44 +861,79 @@ export const ConfirmTransactionDialog: React.FC<
                     <Table size="small">
                       <TableHead>
                         <TableRow>
-                          <TableCell>Code</TableCell>
-                          <TableCell>Name</TableCell>
-                          <TableCell>Type</TableCell>
-                          <TableCell align="right">Balance</TableCell>
-                          <TableCell>Status</TableCell>
+                          <TableCell>Account Key</TableCell>
+                          <TableCell>Report</TableCell>
+                          <TableCell>Class</TableCell>
+                          <TableCell>Sub Class</TableCell>
+                          <TableCell>Account</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {chartOfAccounts.accounts.map((account, _) => (
-                          <TableRow key={account.code} className="hover-lift">
+                        {chartOfAccountsData.map((account, index) => (
+                          <TableRow key={`${account.account_key}-${index}`} className="hover-lift">
                             <TableCell>
-                              <Typography
-                                variant="body2"
-                                sx={{ fontFamily: "monospace" }}
-                              >
-                                {account.code}
-                              </Typography>
-                            </TableCell>
-                            <TableCell>{account.name}</TableCell>
-                            <TableCell>
-                              <Chip
-                                label={account.type}
-                                size="small"
-                                variant="outlined"
+                              <InlineEditField
+                                label="Account Key"
+                                value={account.account_key}
+                                placeholder="1000-Cash"
+                                onSave={(value) => {
+                                  const updated = [...chartOfAccountsData];
+                                  updated[index] = { ...updated[index], account_key: value?.toString().trim() || "1000-Cash" };
+                                  setChartOfAccountsData(updated);
+                                }}
+                                variant="table"
                               />
                             </TableCell>
-                            <TableCell
-                              align="right"
-                              sx={{ fontFamily: "monospace" }}
-                            >
-                              ${account.balance.toFixed(2)}
+                            <TableCell>
+                              <InlineEditField
+                                label="Report"
+                                value={account.report}
+                                placeholder="Balance Sheet"
+                                onSave={(value) => {
+                                  const updated = [...chartOfAccountsData];
+                                  updated[index] = { ...updated[index], report: value?.toString().trim() || "Balance Sheet" };
+                                  setChartOfAccountsData(updated);
+                                }}
+                                variant="table"
+                              />
                             </TableCell>
                             <TableCell>
-                              <Chip
-                                label={account.isActive ? "Active" : "Inactive"}
-                                size="small"
-                                color={account.isActive ? "success" : "default"}
-                                variant="outlined"
+                              <InlineEditField
+                                label="Class"
+                                value={account.class}
+                                placeholder="Assets"
+                                onSave={(value) => {
+                                  const updated = [...chartOfAccountsData];
+                                  updated[index] = { ...updated[index], class: value?.toString().trim() || "Assets" };
+                                  setChartOfAccountsData(updated);
+                                }}
+                                variant="table"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <InlineEditField
+                                label="Sub Class"
+                                value={account.subclass}
+                                placeholder="Current Assets"
+                                onSave={(value) => {
+                                  const updated = [...chartOfAccountsData];
+                                  updated[index] = { ...updated[index], subclass: value?.toString().trim() || "Current Assets" };
+                                  setChartOfAccountsData(updated);
+                                }}
+                                variant="table"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <InlineEditField
+                                label="Account"
+                                value={account.account}
+                                placeholder="Cash"
+                                onSave={(value) => {
+                                  const updated = [...chartOfAccountsData];
+                                  updated[index] = { ...updated[index], account: value?.toString().trim() || "Cash" };
+                                  setChartOfAccountsData(updated);
+                                }}
+                                variant="table"
                               />
                             </TableCell>
                           </TableRow>
@@ -804,292 +944,169 @@ export const ConfirmTransactionDialog: React.FC<
                 </AccordionDetails>
               </Accordion>
 
-              {/* General Ledger Entries */}
+              {/* General Ledger */}
               <Accordion
-                expanded={expandedSections.has("transactions")}
-                onChange={() => toggleSection("transactions")}
+                expanded={expandedSections.has("generalledger")}
+                onChange={() => toggleSection("generalledger")}
                 className="slide-in"
               >
                 <AccordionSummary expandIcon={<ExpandMore />}>
                   {renderSectionHeader(
-                    "General Ledger Entries",
+                    "General Ledger",
                     <Receipt color="primary" />,
-                    transactions.length
+                    generalLedgerData.length
                   )}
                 </AccordionSummary>
                 <AccordionDetails>
-                  <Box
-                    sx={{
-                      mb: 2,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={
-                              selectedTransactions.size === transactions.length
-                            }
-                            indeterminate={
-                              selectedTransactions.size > 0 &&
-                              selectedTransactions.size < transactions.length
-                            }
-                            onChange={(e) => handleSelectAll(e.target.checked)}
-                          />
-                        }
-                        label="Select All"
-                      />
-                      {selectedTransactions.size > 0 && (
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                        >
-                          <Typography variant="body2">
-                            {selectedTransactions.size} selected
-                          </Typography>
-                          <IconButton
-                            size="small"
-                            onClick={(e) =>
-                              setBulkActionAnchor(e.currentTarget)
-                            }
-                          >
-                            <MoreVert />
-                          </IconButton>
-                        </Box>
-                      )}
-                    </Box>
-
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        Total: {totals.count} transactions
-                      </Typography>
-                      <Chip
-                        icon={<Balance />}
-                        label={`Difference: $${Math.abs(
-                          totals.totalDebit - totals.totalCredit
-                        ).toFixed(2)}`}
-                        color={totals.isBalanced ? "success" : "error"}
-                        variant="outlined"
-                        size="small"
-                      />
-                    </Box>
-                  </Box>
-
                   <TableContainer component={Paper} variant="outlined">
                     <Table size="small">
                       <TableHead>
                         <TableRow>
-                          <TableCell padding="checkbox">
-                            <Checkbox
-                              checked={
-                                selectedTransactions.size ===
-                                transactions.length
-                              }
-                              indeterminate={
-                                selectedTransactions.size > 0 &&
-                                selectedTransactions.size < transactions.length
-                              }
-                              onChange={(e) =>
-                                handleSelectAll(e.target.checked)
-                              }
-                            />
-                          </TableCell>
-                          <TableCell sx={{ minWidth: 120 }}>Date</TableCell>
-                          <TableCell sx={{ minWidth: 200 }}>
-                            Description
-                          </TableCell>
-                          <TableCell sx={{ minWidth: 180 }}>Account</TableCell>
-                          <TableCell align="right" sx={{ minWidth: 100 }}>
-                            Debit
-                          </TableCell>
-                          <TableCell align="right" sx={{ minWidth: 100 }}>
-                            Credit
-                          </TableCell>
-                          <TableCell sx={{ minWidth: 120 }}>
-                            Reference
-                          </TableCell>
-                          <TableCell sx={{ minWidth: 150 }}>Status</TableCell>
+                          <TableCell>Date</TableCell>
+                          <TableCell>Account Key</TableCell>
+                          <TableCell>Details</TableCell>
+                          <TableCell align="right">Amount</TableCell>
+                          <TableCell align="center">Type</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {transactions.map((transaction) => (
-                          <TableRow
-                            key={transaction.id}
-                            className={`hover-lift ${
-                              validationErrors[transaction.id]
-                                ? "error-shake"
-                                : ""
-                            }`}
-                            sx={{
-                              backgroundColor: validationErrors[transaction.id]
-                                ? "rgba(244, 67, 54, 0.04)"
-                                : "transparent",
-                            }}
-                          >
-                            <TableCell padding="checkbox">
-                              <Checkbox
-                                checked={selectedTransactions.has(
-                                  transaction.id
-                                )}
-                                onChange={(e) =>
-                                  handleSelectTransaction(
-                                    transaction.id,
-                                    e.target.checked
-                                  )
-                                }
-                              />
-                            </TableCell>
+                        {generalLedgerData.map((entry, index) => (
+                          <TableRow key={`gl-${index}`} className="hover-lift">
                             <TableCell>
                               <InlineEditField
-                                value={transaction.date}
-                                onSave={(value) =>
-                                  handleTransactionUpdate(
-                                    transaction.id,
-                                    "date",
-                                    value
-                                  )
-                                }
-                                type="text"
-                                size="small"
-                                fullWidth={false}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <InlineEditField
-                                value={transaction.description}
-                                onSave={(value) =>
-                                  handleTransactionUpdate(
-                                    transaction.id,
-                                    "description",
-                                    value
-                                  )
-                                }
-                                required
-                                validation={(value) =>
-                                  !value.toString().trim()
-                                    ? "Description is required"
-                                    : null
-                                }
-                                size="small"
-                                fullWidth={false}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <InlineEditField
-                                value={transaction.account}
-                                onSave={(value) =>
-                                  handleTransactionUpdate(
-                                    transaction.id,
-                                    "account",
-                                    value
-                                  )
-                                }
-                                required
-                                size="small"
-                                fullWidth={false}
-                              />
-                            </TableCell>
-                            <TableCell align="right">
-                              <InlineEditField
-                                value={transaction.debit}
-                                onSave={(value) =>
-                                  handleTransactionUpdate(
-                                    transaction.id,
-                                    "debit",
-                                    value
-                                  )
-                                }
-                                type="currency"
-                                validation={(value) =>
-                                  Number(value) < 0
-                                    ? "Cannot be negative"
-                                    : null
-                                }
-                                size="small"
-                                fullWidth={false}
-                              />
-                            </TableCell>
-                            <TableCell align="right">
-                              <InlineEditField
-                                value={transaction.credit}
-                                onSave={(value) =>
-                                  handleTransactionUpdate(
-                                    transaction.id,
-                                    "credit",
-                                    value
-                                  )
-                                }
-                                type="currency"
-                                validation={(value) =>
-                                  Number(value) < 0
-                                    ? "Cannot be negative"
-                                    : null
-                                }
-                                size="small"
-                                fullWidth={false}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <InlineEditField
-                                value={transaction.reference || ""}
-                                onSave={(value) =>
-                                  handleTransactionUpdate(
-                                    transaction.id,
-                                    "reference",
-                                    value
-                                  )
-                                }
-                                size="small"
-                                fullWidth={false}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 1,
+                                label="Date"
+                                value={entry.date}
+                                placeholder="YYYY-MM-DD (e.g., 2025-01-24)"
+                                onSave={(value) => {
+                                  const updated = [...generalLedgerData];
+                                  updated[index] = { ...updated[index], date: value?.toString().trim() || transactions[0]?.date || new Date().toISOString().split('T')[0] };
+                                  setGeneralLedgerData(updated);
                                 }}
-                              >
-                                {transaction.isModified && (
-                                  <Chip
-                                    label="Modified"
-                                    size="small"
-                                    color="warning"
-                                    variant="outlined"
-                                  />
-                                )}
-                                {transaction.isValidated && (
-                                  <Chip
-                                    label="Validated"
-                                    size="small"
-                                    color="success"
-                                    variant="outlined"
-                                  />
-                                )}
-                                {validationErrors[transaction.id] && (
-                                  <Tooltip
-                                    title={validationErrors[
-                                      transaction.id
-                                    ].join(", ")}
-                                  >
-                                    <Chip
-                                      label="Error"
-                                      size="small"
-                                      color="error"
-                                      variant="outlined"
-                                    />
-                                  </Tooltip>
-                                )}
-                              </Box>
+                                variant="table"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <InlineEditField
+                                label="Account Key"
+                                value={entry.account_key}
+                                placeholder="1000-Cash"
+                                onSave={(value) => {
+                                  const updated = [...generalLedgerData];
+                                  updated[index] = { ...updated[index], account_key: value?.toString().trim() || "1000-Cash" };
+                                  setGeneralLedgerData(updated);
+                                }}
+                                variant="table"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <InlineEditField
+                                label="Details"
+                                value={entry.details}
+                                placeholder={transactions[0]?.description || "Transaction description"}
+                                onSave={(value) => {
+                                  const updated = [...generalLedgerData];
+                                  updated[index] = { ...updated[index], details: value?.toString().trim() || transactions[0]?.description || "Transaction description" };
+                                  setGeneralLedgerData(updated);
+                                }}
+                                variant="table"
+                              />
+                            </TableCell>
+                            <TableCell align="right">
+                              <InlineEditField
+                                label="Amount"
+                                type="number"
+                                value={entry.amount}
+                                placeholder="0.00"
+                                onSave={(value) => {
+                                  const updated = [...generalLedgerData];
+                                  updated[index] = { ...updated[index], amount: Number(value) || 0 };
+                                  setGeneralLedgerData(updated);
+                                  
+                                  // Auto-clear opposite field logic
+                                  if (Number(value) > 0) {
+                                    // Clear the opposite type if this entry becomes the active one
+                                    const oppositeType = entry.type === "Debit" ? "Credit" : "Debit";
+                                    const oppositeIndex = generalLedgerData.findIndex(
+                                      (e, i) => i !== index && e.account_key === entry.account_key && e.type === oppositeType
+                                    );
+                                    if (oppositeIndex !== -1) {
+                                      updated[oppositeIndex] = { ...updated[oppositeIndex], amount: 0 };
+                                    }
+                                  }
+                                  setGeneralLedgerData(updated);
+                                }}
+                                variant="table"
+                                prefix="$"
+                              />
+                            </TableCell>
+                            <TableCell align="center">
+                              <InlineEditField
+                                label="Type"
+                                value={entry.type}
+                                placeholder="Debit"
+                                onSave={(value) => {
+                                  const updated = [...generalLedgerData];
+                                  updated[index] = { ...updated[index], type: (value?.toString().trim() || "Debit") as "Debit" | "Credit" };
+                                  setGeneralLedgerData(updated);
+                                }}
+                                variant="table"
+                              />
                             </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
                   </TableContainer>
+                  
+                  {/* Balance Summary */}
+                  <Box sx={{ mt: 2, p: 2, bgcolor: "background.default", borderRadius: 1 }}>
+                    <Typography variant="h6" gutterBottom>
+                      Balance Summary
+                    </Typography>
+                    <Box sx={{ display: "flex", gap: 4 }}>
+                      <Box>
+                        <Typography variant="body2" color="textSecondary">
+                          Total Debit
+                        </Typography>
+                        <Typography variant="h6" color="error.main">
+                          ${generalLedgerData
+                            .filter(e => e.type === "Debit")
+                            .reduce((sum, e) => sum + e.amount, 0)
+                            .toFixed(2)}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" color="textSecondary">
+                          Total Credit
+                        </Typography>
+                        <Typography variant="h6" color="success.main">
+                          ${generalLedgerData
+                            .filter(e => e.type === "Credit")
+                            .reduce((sum, e) => sum + e.amount, 0)
+                            .toFixed(2)}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" color="textSecondary">
+                          Difference
+                        </Typography>
+                        <Typography 
+                          variant="h6" 
+                          color={
+                            Math.abs(
+                              generalLedgerData.filter(e => e.type === "Debit").reduce((sum, e) => sum + e.amount, 0) -
+                              generalLedgerData.filter(e => e.type === "Credit").reduce((sum, e) => sum + e.amount, 0)
+                            ) < 0.01 ? "success.main" : "warning.main"
+                          }
+                        >
+                          ${Math.abs(
+                            generalLedgerData.filter(e => e.type === "Debit").reduce((sum, e) => sum + e.amount, 0) -
+                            generalLedgerData.filter(e => e.type === "Credit").reduce((sum, e) => sum + e.amount, 0)
+                          ).toFixed(2)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
                 </AccordionDetails>
               </Accordion>
             </Box>
@@ -1151,7 +1168,6 @@ export const ConfirmTransactionDialog: React.FC<
                 variant="contained"
                 onClick={handleSave}
                 disabled={
-                  !totals.isBalanced ||
                   Object.keys(validationErrors).length > 0 ||
                   isProcessing
                 }
@@ -1218,10 +1234,21 @@ export const ConfirmTransactionDialog: React.FC<
       >
         <DialogTitle>Confirm Save Operation</DialogTitle>
         <DialogContent>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            <AlertTitle>Summary of Changes</AlertTitle>
-            You are about to save {totals.count} transactions to the database.
-          </Alert>
+          {!totals.isBalanced ? (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              <AlertTitle>⚠️ Unbalanced Transaction Warning</AlertTitle>
+              The total debits and credits are not equal. This may indicate an error in your entries.
+              <br />
+              <strong>Difference: ${Math.abs(totals.totalDebit - totals.totalCredit).toFixed(2)}</strong>
+              <br />
+              Please review your entries before proceeding.
+            </Alert>
+          ) : (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <AlertTitle>Summary of Changes</AlertTitle>
+              You are about to save {totals.count} transactions to the database.
+            </Alert>
+          )}
 
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
             <Typography variant="body2">
@@ -1230,9 +1257,12 @@ export const ConfirmTransactionDialog: React.FC<
             <Typography variant="body2">
               • Total Credit: ${totals.totalCredit.toFixed(2)}
             </Typography>
-            <Typography variant="body2">
+            <Typography variant="body2" sx={{ 
+              color: totals.isBalanced ? 'success.main' : 'error.main',
+              fontWeight: totals.isBalanced ? 'normal' : 'bold'
+            }}>
               • Balance Status:{" "}
-              {totals.isBalanced ? "Balanced ✓" : "Unbalanced ✗"}
+              {totals.isBalanced ? "Balanced ✓" : `Unbalanced ✗ (Difference: $${Math.abs(totals.totalDebit - totals.totalCredit).toFixed(2)})`}
             </Typography>
             <Typography variant="body2">
               • Modified Transactions:{" "}
@@ -1245,7 +1275,7 @@ export const ConfirmTransactionDialog: React.FC<
           <Button
             variant="contained"
             onClick={handleConfirmSave}
-            color="primary"
+            color={totals.isBalanced ? "primary" : "warning"}
             disabled={isProcessing}
             startIcon={
               isProcessing ? (
@@ -1253,7 +1283,7 @@ export const ConfirmTransactionDialog: React.FC<
               ) : undefined
             }
           >
-            {isProcessing ? "Processing..." : "Confirm Save"}
+            {isProcessing ? "Processing..." : totals.isBalanced ? "Confirm Save" : "Save Anyway"}
           </Button>
         </DialogActions>
       </Dialog>

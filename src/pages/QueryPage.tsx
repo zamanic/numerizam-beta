@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -68,6 +68,7 @@ import { saveReportResults } from "../services/langGraphSaveAPI";
 import { transactionProcessingService } from "../services/transactionProcessingService";
 import { supabaseAccountingService } from "../services/supabaseAccountingService";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../services/supabase";
 
 // Types
 type Transaction = {
@@ -129,7 +130,8 @@ const QueryPage = () => {
   );
   const [error, setError] = useState("");
   const [reportData, setReportData] = useState<any>(null);
-  const [pendingTransactionData, setPendingTransactionData] = useState<any>(null);
+  const [pendingTransactionData, setPendingTransactionData] =
+    useState<any>(null);
   const [showPendingBox, setShowPendingBox] = useState(false);
   const queryInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -249,6 +251,56 @@ const QueryPage = () => {
     },
   ]);
 
+  // New structured data states for the enhanced dialog
+  const [companyData, setCompanyData] = useState({
+    company_name: user?.company_name || "Patrick Incitti",
+  });
+
+  const [territoryData, setTerritoryData] = useState({
+    country: "Bangladesh",
+    region: "Asia",
+  });
+
+  const [calendarData, setCalendarData] = useState({
+    date: new Date().toISOString().split("T")[0],
+    quarter: "Q1",
+    day: "Monday",
+  });
+
+  const [chartOfAccountsData, setChartOfAccountsData] = useState([
+    {
+      account_key: "1000",
+      report: "Balance Sheet",
+      class: "Assets",
+      subclass: "Current Assets",
+      account: "Cash",
+    },
+    {
+      account_key: "4000",
+      report: "Income Statement",
+      class: "Revenue",
+      subclass: "Operating Revenue",
+      account: "Sales Revenue",
+    },
+  ]);
+
+  const [generalLedgerData, setGeneralLedgerData] = useState([
+    {
+      date: new Date().toISOString().split("T")[0],
+      account_key: "1000",
+      details: "Cash receipt from customer",
+      amount: 999,
+      type: "Debit",
+    },
+    {
+      date: new Date().toISOString().split("T")[0],
+      account_key: "4000",
+      details: "Sales revenue recognition",
+      amount: 999,
+      type: "Credit",
+    },
+  ]);
+
   // State to hold all dialog data together
   const [dialogData, setDialogData] = useState({
     transactions: enhancedTransactions,
@@ -263,7 +315,7 @@ const QueryPage = () => {
 
   // Update chart of accounts and general ledger when enhanced transactions change
   useEffect(() => {
-    if (dialogData.transactions.length > 0) {
+    if (dialogData.transactions.length > 0 && !isProcessing) {
       // Extract unique accounts from enhanced transactions
       const accountsMap = new Map();
       const ledgerEntries: any[] = [];
@@ -339,7 +391,7 @@ const QueryPage = () => {
       // Update general ledger entries
       setGeneralLedgerEntries(ledgerEntries);
     }
-  }, [dialogData.transactions]);
+  }, [dialogData.transactions, isProcessing]);
 
   // Check if this is demo mode
   const isDemoMode = window.location.pathname === "/demo";
@@ -394,7 +446,7 @@ const QueryPage = () => {
   }, []);
 
   // Handle query submission
-  const handleSubmitQuery = async () => {
+  const handleSubmitQuery = useCallback(async () => {
     if (!query.trim()) return;
 
     if (!isDemoMode && !user) {
@@ -435,7 +487,7 @@ const QueryPage = () => {
         fiscalYear: String(cal.year),
         daysRemaining: 30,
       };
-      console.log('QueryPage: Setting calendarInfo:', updatedCalendarInfo);
+      console.log("QueryPage: Setting calendarInfo:", updatedCalendarInfo);
       setCalendarInfo(updatedCalendarInfo);
 
       // 2. Territory
@@ -445,7 +497,10 @@ const QueryPage = () => {
         taxRate: 8.5,
         regulations: ["SOX", "GAAP"],
       };
-      console.log('QueryPage: Setting territoryDetails:', updatedTerritoryDetails);
+      console.log(
+        "QueryPage: Setting territoryDetails:",
+        updatedTerritoryDetails
+      );
       setTerritoryDetails(updatedTerritoryDetails);
 
       // 3. Company
@@ -455,7 +510,7 @@ const QueryPage = () => {
         taxId: "TAX-123456789",
         fiscalYear: String(cal.year),
       };
-      console.log('QueryPage: Setting companyInfo:', updatedCompanyInfo);
+      console.log("QueryPage: Setting companyInfo:", updatedCompanyInfo);
       setCompanyInfo(updatedCompanyInfo);
 
       // 4. Chart of Accounts (array -> dialog state)
@@ -471,7 +526,10 @@ const QueryPage = () => {
           originalAccountKey: c.account_key, // Keep original account key for reference
         })),
       };
-      console.log('QueryPage: Setting chartOfAccounts:', updatedChartOfAccounts);
+      console.log(
+        "QueryPage: Setting chartOfAccounts:",
+        updatedChartOfAccounts
+      );
       setChartOfAccounts(updatedChartOfAccounts);
 
       // 5. General Ledger (array -> dialog state)
@@ -485,7 +543,7 @@ const QueryPage = () => {
         reference: `REF-${String(idx + 1).padStart(3, "0")}`,
         status: "Active",
       }));
-      console.log('QueryPage: Setting generalLedgerEntries:', ledgerRows);
+      console.log("QueryPage: Setting generalLedgerEntries:", ledgerRows);
       setGeneralLedgerEntries(ledgerRows);
 
       // 6. Enhanced transactions (for the dialog table)
@@ -501,7 +559,7 @@ const QueryPage = () => {
         isValidated: false,
         errors: [],
       }));
-      console.log('QueryPage: Setting enhancedTransactions:', enhanced);
+      console.log("QueryPage: Setting enhancedTransactions:", enhanced);
       setEnhancedTransactions(enhanced);
 
       // 7. Legacy journal entry (backward compatibility)
@@ -515,11 +573,69 @@ const QueryPage = () => {
           credit: gl.type === "Credit" ? gl.amount : undefined,
         })),
       };
-      console.log('QueryPage: Setting currentJournalEntry:', journalEntry);
+      console.log("QueryPage: Setting currentJournalEntry:", journalEntry);
       setCurrentJournalEntry(journalEntry);
+
+      /* ---------- populate the new structured data ---------- */
+      // Company Data
+      const newCompanyData = {
+        company_name: p.companies?.company_name || company,
+      };
+      console.log("QueryPage: Setting companyData:", newCompanyData);
+      setCompanyData(newCompanyData);
+
+      // Territory Data
+      const newTerritoryData = {
+        country: p.territory?.country || "Bangladesh",
+        region: p.territory?.region || "Asia",
+      };
+      console.log("QueryPage: Setting territoryData:", newTerritoryData);
+      setTerritoryData(newTerritoryData);
+
+      // Calendar Data
+      const newCalendarData = {
+        date: cal.date,
+        quarter: cal.quarter,
+        day: new Date(cal.date).toLocaleDateString("en-US", {
+          weekday: "long",
+        }),
+      };
+      console.log("QueryPage: Setting calendarData:", newCalendarData);
+      setCalendarData(newCalendarData);
+
+      // Chart of Accounts Data
+      const newChartOfAccountsData = p.chartofaccounts.map((c: any) => ({
+        account_key: c.account_key,
+        report: c.report,
+        class: c.class,
+        subclass: c.subclass,
+        account: c.account,
+      }));
+      console.log(
+        "QueryPage: Setting chartOfAccountsData:",
+        newChartOfAccountsData
+      );
+      setChartOfAccountsData(newChartOfAccountsData);
+
+      // General Ledger Data
+      const newGeneralLedgerData = p.generalledger.map((gl: any) => ({
+        date: gl.date,
+        account_key: gl.account_key,
+        details: gl.details,
+        amount: gl.amount,
+        type: gl.type,
+      }));
+      console.log(
+        "QueryPage: Setting generalLedgerData:",
+        newGeneralLedgerData
+      );
+      setGeneralLedgerData(newGeneralLedgerData);
 
       setTransactionPayload(p); // keep raw payload for confirm step
       setAiJsonOutput(jsonData);
+
+      // Update enhanced transactions state first
+      setEnhancedTransactions(enhanced);
 
       // Update dialog data atomically with all the new values
       const newDialogData = {
@@ -529,8 +645,8 @@ const QueryPage = () => {
         calendarInfo: updatedCalendarInfo,
         chartOfAccounts: updatedChartOfAccounts,
       };
-      
-      console.log('QueryPage: Setting dialog data:', newDialogData);
+
+      console.log("QueryPage: Setting dialog data:", newDialogData);
       setDialogData(newDialogData);
 
       // Clear any pending data since we have new data
@@ -539,22 +655,22 @@ const QueryPage = () => {
 
       // Use setTimeout to ensure state updates are applied before showing dialog
       setTimeout(() => {
-        console.log('QueryPage: Opening dialog with updated values:', {
+        console.log("QueryPage: Opening dialog with updated values:", {
           enhanced,
           updatedCompanyInfo,
           updatedTerritoryDetails,
           updatedCalendarInfo,
-          updatedChartOfAccounts
+          updatedChartOfAccounts,
         });
         setShowConfirmDialog(true);
-      }, 100);
+      }, 200);
     } catch (err: any) {
       console.error(err);
       setError(err.message);
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [query, queryType, isDemoMode, user, session]);
 
   // Helper function to get account name from account key
   const getAccountName = (accountKey: number): string => {
@@ -594,49 +710,315 @@ const QueryPage = () => {
       } else {
         // real backend
         // Transform the payload to match backend expectations
+        console.log(
+          "DEBUG: transactionPayload structure:",
+          JSON.stringify(transactionPayload, null, 2)
+        );
+
         const backendPayload = {
           company_data: {
-            company_name: transactionPayload.companies?.company_name || "Default Company"
+            company_name: String(
+              transactionPayload.companies?.company_name ||
+                transactionPayload.company?.company_name ||
+                "Default Company"
+            ).trim(),
           },
-          territory_data: transactionPayload.territory ? {
-            Country: transactionPayload.territory.country || "Bangladesh",
-            Region: transactionPayload.territory.region || "Asia"
-          } : undefined,
+          territory_data: transactionPayload.territory
+            ? {
+                Country: String(
+                  transactionPayload.territory.country || "Bangladesh"
+                ).trim(),
+                Region: String(
+                  transactionPayload.territory.region || "Asia"
+                ).trim(),
+              }
+            : {
+                Country: "Bangladesh",
+                Region: "Asia",
+              },
           calendar_data: {
-            Date: transactionPayload.calendar.date,
-            Year: transactionPayload.calendar.year,
-            Quarter: transactionPayload.calendar.quarter,
-            Month: transactionPayload.calendar.month,
-            Day: transactionPayload.calendar.day
+            Date: String(transactionPayload.calendar.date).trim(),
+            Year: Number(transactionPayload.calendar.year),
+            Quarter: String(transactionPayload.calendar.quarter).trim(),
+            Month: String(transactionPayload.calendar.month).trim(),
+            Day: String(transactionPayload.calendar.day).trim(),
           },
-          chart_of_accounts_data: transactionPayload.chartofaccounts.map((account: any) => ({
-            Account_key: account.account_key,
-            Report: account.report,
-            Class: account.class,
-            SubClass: account.subclass,
-            SubClass2: account.subclass2,
-            Account: account.account,
-            SubAccount: account.subaccount
-          })),
-          general_ledger_entries: transactionPayload.generalledger.map((entry: any) => ({
-            Account_key: entry.account_key,
-            Amount: entry.amount,
-            Type: entry.type,
-            Details: entry.details
-          }))
+          chart_of_accounts_data: transactionPayload.chartofaccounts.map(
+            (account: any, index: number) => {
+              // Generate account key based on account class if missing
+              let accountKey = account.account_key;
+              if (!accountKey) {
+                const accountClass = account.class || "Asset";
+                switch (accountClass.toLowerCase()) {
+                  case "asset":
+                    accountKey = 1000 + index * 10; // Assets: 1000-1999
+                    break;
+                  case "liability":
+                    accountKey = 2000 + index * 10; // Liabilities: 2000-2999
+                    break;
+                  case "equity":
+                  case "owner's equity":
+                    accountKey = 3000 + index * 10; // Equity: 3000-3999
+                    break;
+                  case "revenue":
+                  case "income":
+                    accountKey = 4000 + index * 10; // Revenue: 4000-4999
+                    break;
+                  case "expense":
+                    accountKey = 5000 + index * 10; // Expenses: 5000+
+                    break;
+                  default:
+                    accountKey = 1000 + index * 10; // Default to Asset
+                }
+              }
+
+              // Ensure proper data types and clean field names
+              return {
+                Account_key: Number(accountKey), // Ensure it's a number
+                Report: String(account.report || "Balance Sheet").trim(),
+                Class: String(account.class || "Asset").trim(),
+                SubClass: String(account.subclass || "Current Asset").trim(),
+                SubClass2: String(
+                  account.subclass2 || account.subclass || "Current Asset"
+                ).trim(),
+                Account: String(account.account || "Unknown Account").trim(),
+                SubAccount: String(account.subaccount || "").trim(),
+              };
+            }
+          ),
+          general_ledger_entries: transactionPayload.generalledger.map(
+            (entry: any, index: number) => {
+              // Find corresponding chart of accounts entry to get the correct account key
+              let accountKey = entry.account_key;
+              if (!accountKey) {
+                // Try to match with chart of accounts by account name or use fallback
+                const matchingAccount = transactionPayload.chartofaccounts.find(
+                  (acc: any) =>
+                    acc.account === entry.account ||
+                    acc.account_key === entry.account_key
+                );
+
+                if (matchingAccount) {
+                  // Use the same logic as chart of accounts
+                  const accountClass = matchingAccount.class || "Asset";
+                  const chartIndex =
+                    transactionPayload.chartofaccounts.indexOf(matchingAccount);
+                  switch (accountClass.toLowerCase()) {
+                    case "asset":
+                      accountKey = 1000 + chartIndex * 10;
+                      break;
+                    case "liability":
+                      accountKey = 2000 + chartIndex * 10;
+                      break;
+                    case "equity":
+                    case "owner's equity":
+                      accountKey = 3000 + chartIndex * 10;
+                      break;
+                    case "revenue":
+                    case "income":
+                      accountKey = 4000 + chartIndex * 10;
+                      break;
+                    case "expense":
+                      accountKey = 5000 + chartIndex * 10;
+                      break;
+                    default:
+                      accountKey = 1000 + chartIndex * 10;
+                  }
+                } else {
+                  // Fallback to Asset range
+                  accountKey = 1000 + index * 10;
+                }
+              }
+
+              // Ensure proper data types and field names
+              return {
+                Account_key: Number(accountKey), // Ensure it's a number
+                Amount: Number(entry.amount || 0), // Ensure it's a number
+                Type: String(entry.type || "Debit").trim(), // Ensure it's a clean string
+                Details: String(entry.details || "").trim(), // Ensure it's a clean string
+              };
+            }
+          ),
         };
 
-        const resp = await fetch("http://localhost:8000/api/transactions/process/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(backendPayload),
-        });
+        console.log(
+          "DEBUG: backendPayload being sent:",
+          JSON.stringify(backendPayload, null, 2)
+        );
+
+        const resp = await fetch(
+          "http://localhost:8000/api/transactions/process/",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(backendPayload),
+          }
+        );
         if (!resp.ok) {
           const errData = await resp.json();
           throw new Error(errData.detail || "Failed to save transaction.");
         }
         const result = await resp.json();
         alert(`Success: ${result.message}`);
+
+        // Save to Supabase database after successful Django backend processing (skip for demo users)
+        try {
+          const userId = user?.id || 'demo-user';
+          
+          if (userId !== 'demo-user') {
+            // Check if user has valid session before attempting Supabase save
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+              console.warn("User not authenticated, skipping Supabase save");
+              return;
+            }
+            
+            console.log("Saving transaction data to Supabase...");
+            
+            // Transform transactionPayload to match TransactionData structure expected by Supabase
+            const supabasePayload = {
+              company_data: {
+                company_name: String(
+                  transactionPayload.companies?.company_name ||
+                    transactionPayload.company?.company_name ||
+                    "Default Company"
+                ).trim(),
+              },
+              territory_data: {
+                country: String(
+                  transactionPayload.territory?.country || "Bangladesh"
+                ).trim(),
+                region: String(
+                  transactionPayload.territory?.region || "Asia"
+                ).trim(),
+              },
+              calendar_data: {
+                date: (() => {
+                  const date = transactionPayload.calendar.date || new Date().toISOString().split('T')[0];
+                  // Ensure valid date format YYYY-MM-DD
+                  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                  if (typeof date === 'string' && dateRegex.test(date)) {
+                    return date;
+                  }
+                  // If invalid format, use current date
+                  return new Date().toISOString().split('T')[0];
+                })(),
+                year: Number(transactionPayload.calendar.year || new Date().getFullYear()),
+                quarter: String(transactionPayload.calendar.quarter || `Q${Math.ceil((new Date().getMonth() + 1) / 3)}`).trim(),
+                month: String(transactionPayload.calendar.month || new Date().toLocaleString('default', { month: 'long' })).trim(),
+                day: String(transactionPayload.calendar.day || new Date().toLocaleString('default', { weekday: 'long' })).trim(),
+              },
+              chart_of_accounts_data: transactionPayload.chartofaccounts.map(
+                (account: any, index: number) => {
+                  // Generate account key based on account class if missing
+                  let accountKey = account.account_key;
+                  if (!accountKey) {
+                    const accountClass = account.class || "Asset";
+                    switch (accountClass.toLowerCase()) {
+                      case "asset":
+                        accountKey = 1000 + index * 10;
+                        break;
+                      case "liability":
+                        accountKey = 2000 + index * 10;
+                        break;
+                      case "equity":
+                      case "owner's equity":
+                        accountKey = 3000 + index * 10;
+                        break;
+                      case "revenue":
+                      case "income":
+                        accountKey = 4000 + index * 10;
+                        break;
+                      case "expense":
+                        accountKey = 5000 + index * 10;
+                        break;
+                      default:
+                        accountKey = 1000 + index * 10;
+                    }
+                  }
+
+                  return {
+                    account_key: Number(accountKey),
+                    report: String(account.report || "Balance Sheet").trim(),
+                    class: String(account.class || "Asset").trim(),
+                    subclass: String(account.subclass || "Current Asset").trim(),
+                    subclass2: String(
+                      account.subclass2 || account.subclass || "Current Asset"
+                    ).trim(),
+                    account: String(account.account || "Unknown Account").trim(),
+                    subaccount: String(account.subaccount || "").trim(),
+                  };
+                }
+              ),
+              general_ledger_entries: transactionPayload.generalledger.map(
+                (entry: any, index: number) => {
+                  // Find corresponding chart of accounts entry to get the correct account key
+                  let accountKey = entry.account_key;
+                  if (!accountKey) {
+                    const matchingAccount = transactionPayload.chartofaccounts.find(
+                      (acc: any) =>
+                        acc.account === entry.account ||
+                        acc.account_key === entry.account_key
+                    );
+
+                    if (matchingAccount) {
+                      const accountClass = matchingAccount.class || "Asset";
+                      const chartIndex =
+                        transactionPayload.chartofaccounts.indexOf(matchingAccount);
+                      switch (accountClass.toLowerCase()) {
+                        case "asset":
+                          accountKey = 1000 + chartIndex * 10;
+                          break;
+                        case "liability":
+                          accountKey = 2000 + chartIndex * 10;
+                          break;
+                        case "equity":
+                        case "owner's equity":
+                          accountKey = 3000 + chartIndex * 10;
+                          break;
+                        case "revenue":
+                        case "income":
+                          accountKey = 4000 + chartIndex * 10;
+                          break;
+                        case "expense":
+                          accountKey = 5000 + chartIndex * 10;
+                          break;
+                        default:
+                          accountKey = 1000 + chartIndex * 10;
+                      }
+                    } else {
+                      accountKey = 1000 + index * 10; // Fallback
+                    }
+                  }
+
+                  return {
+                    account_key: Number(accountKey),
+                    details: String(entry.details || "").trim(),
+                    amount: Number(entry.amount || 0),
+                    type: String(entry.type || "Debit").trim() as 'Debit' | 'Credit',
+                  };
+                }
+              ),
+            };
+            
+            const supabaseSaveResult = await supabaseAccountingService.saveTransactionData(
+              userId,
+              supabasePayload
+            );
+            
+            if (supabaseSaveResult.success) {
+              console.log("Successfully saved to Supabase:", supabaseSaveResult);
+            } else {
+              console.error("Failed to save to Supabase:", supabaseSaveResult.error);
+              // Don't throw error here as Django backend already processed successfully
+            }
+          } else {
+            console.log("Demo mode: Skipping Supabase save to avoid RLS policy conflicts");
+          }
+        } catch (supabaseError) {
+          console.error("Error saving to Supabase:", supabaseError);
+          // Don't throw error here as Django backend already processed successfully
+        }
 
         // also push into local list for instant UI update
         const newTx: Transaction[] = dialogData.transactions.map((t, idx) => ({
@@ -650,7 +1032,7 @@ const QueryPage = () => {
         }));
         setTransactions((prev) => [...newTx, ...prev]);
       }
-      
+
       // Clear pending data after successful confirmation
       setPendingTransactionData(null);
       setShowPendingBox(false);
@@ -1142,11 +1524,14 @@ const QueryPage = () => {
                       mt: 1,
                     }}
                     onClick={() =>
-                      setQuery("Record a sale of $5,000 for ABC Corp consulting services on June 15, 2024 in the United States")
+                      setQuery(
+                        "Record a sale of $5,000 for ABC Corp consulting services on June 15, 2024 in the United States"
+                      )
                     }
                   >
                     <Typography variant="body2">
-                      "Record a sale of $5,000 for ABC Corp consulting services on June 15, 2024 in the United States"
+                      "Record a sale of $5,000 for ABC Corp consulting services
+                      on June 15, 2024 in the United States"
                     </Typography>
                   </Box>
                   <Box
@@ -1160,11 +1545,14 @@ const QueryPage = () => {
                       mt: 1,
                     }}
                     onClick={() =>
-                      setQuery("Enter office supplies expense of $250.75 for TechStart Inc on March 10, 2024 in Canada")
+                      setQuery(
+                        "Enter office supplies expense of $250.75 for TechStart Inc on March 10, 2024 in Canada"
+                      )
                     }
                   >
                     <Typography variant="body2">
-                      "Enter office supplies expense of $250.75 for TechStart Inc on March 10, 2024 in Canada"
+                      "Enter office supplies expense of $250.75 for TechStart
+                      Inc on March 10, 2024 in Canada"
                     </Typography>
                   </Box>
                   <Box
@@ -1178,11 +1566,14 @@ const QueryPage = () => {
                       mt: 1,
                     }}
                     onClick={() =>
-                      setQuery("Record equipment purchase of $3,200 for Global Solutions Ltd on January 22, 2024 in the United Kingdom")
+                      setQuery(
+                        "Record equipment purchase of $3,200 for Global Solutions Ltd on January 22, 2024 in the United Kingdom"
+                      )
                     }
                   >
                     <Typography variant="body2">
-                      "Record equipment purchase of $3,200 for Global Solutions Ltd on January 22, 2024 in the United Kingdom"
+                      "Record equipment purchase of $3,200 for Global Solutions
+                      Ltd on January 22, 2024 in the United Kingdom"
                     </Typography>
                   </Box>
                   <Box
@@ -1196,11 +1587,14 @@ const QueryPage = () => {
                       mt: 1,
                     }}
                     onClick={() =>
-                      setQuery("Enter rent payment of $1,800 for Innovate Co on February 1, 2024 in Australia")
+                      setQuery(
+                        "Enter rent payment of $1,800 for Innovate Co on February 1, 2024 in Australia"
+                      )
                     }
                   >
                     <Typography variant="body2">
-                      "Enter rent payment of $1,800 for Innovate Co on February 1, 2024 in Australia"
+                      "Enter rent payment of $1,800 for Innovate Co on February
+                      1, 2024 in Australia"
                     </Typography>
                   </Box>
                 </Box>
@@ -1233,7 +1627,15 @@ const QueryPage = () => {
 
               {/* Error Display */}
               {error && (
-                <Alert severity="error" sx={{ mb: 2 }}>
+                <Alert
+                  severity="error"
+                  sx={{
+                    mb: 2,
+                    position: "relative",
+                    zIndex: 1001,
+                    boxShadow: "0 4px 20px rgba(211, 47, 47, 0.3)",
+                  }}
+                >
                   {error}
                 </Alert>
               )}
@@ -1444,6 +1846,11 @@ const QueryPage = () => {
         territoryDetails={dialogData.territoryDetails}
         calendarInfo={dialogData.calendarInfo}
         chartOfAccounts={dialogData.chartOfAccounts}
+        companyData={companyData}
+        territoryData={territoryData}
+        calendarData={calendarData}
+        chartOfAccountsData={chartOfAccountsData}
+        generalLedgerData={generalLedgerData}
         onConfirm={handleConfirmEntry}
         isProcessing={isProcessing}
         isDemoMode={isDemoMode}

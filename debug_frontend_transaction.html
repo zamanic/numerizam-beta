@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Frontend Transaction</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 20px; margin: 10px 0; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .log { background: #f8f9fa; padding: 10px; border-radius: 3px; font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Debug Frontend Transaction Processing</h1>
+        
+        <div class="section">
+            <h2>Test Transaction Processing</h2>
+            <button onclick="testTransaction()">Send Test Transaction</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+        
+        <div class="section">
+            <h2>Debug Log</h2>
+            <div id="log" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            logDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        async function testTransaction() {
+            log('Starting transaction test...');
+            
+            const testPayload = {
+                company_data: {
+                    company_name: "Test Company"
+                },
+                territory_data: {
+                    Country: "Bangladesh",
+                    Region: "Asia"
+                },
+                calendar_data: {
+                    Date: "2023-10-01",
+                    Year: 2023,
+                    Quarter: "Q4",
+                    Month: "October",
+                    Day: "Sunday"
+                },
+                chart_of_accounts_data: [
+                    {
+                        Account_key: 1000,
+                        Report: "Balance Sheet",
+                        Class: "Asset",
+                        SubClass: "Current Asset",
+                        SubClass2: "Cash",
+                        Account: "Cash",
+                        SubAccount: "Checking"
+                    },
+                    {
+                        Account_key: 4000,
+                        Report: "Income Statement",
+                        Class: "Revenue",
+                        SubClass: "Sales Revenue",
+                        SubClass2: "Product Sales",
+                        Account: "Sales Revenue",
+                        SubAccount: "Product Sales"
+                    },
+                    {
+                        Account_key: 5000,
+                        Report: "Income Statement",
+                        Class: "Expense",
+                        SubClass: "Cost of Goods Sold",
+                        SubClass2: "Direct Costs",
+                        Account: "Cost of Goods Sold",
+                        SubAccount: "Product Costs"
+                    }
+                ],
+                general_ledger_entries: [
+                    {
+                        Account_key: 1000,
+                        Amount: 1000,
+                        Type: "Debit",
+                        Details: "Cash received from sale"
+                    },
+                    {
+                        Account_key: 4000,
+                        Amount: 1000,
+                        Type: "Credit",
+                        Details: "Revenue from sale"
+                    },
+                    {
+                        Account_key: 5000,
+                        Amount: 800,
+                        Type: "Debit",
+                        Details: "Cost of goods sold"
+                    }
+                ]
+            };
+
+            log('Payload prepared: ' + JSON.stringify(testPayload, null, 2));
+
+            try {
+                log('Sending request to http://localhost:8000/api/transactions/process/');
+                
+                const response = await fetch('http://localhost:8000/api/transactions/process/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testPayload)
+                });
+
+                log(`Response status: ${response.status} ${response.statusText}`);
+                log(`Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}`);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`Error response body: ${errorText}`, 'error');
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const result = await response.json();
+                log(`Success response: ${JSON.stringify(result, null, 2)}`, 'success');
+                log('Transaction processed successfully!', 'success');
+
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                log(`Error stack: ${error.stack}`, 'error');
+            }
+        }
+
+        // Test on page load
+        log('Debug page loaded. Click "Send Test Transaction" to test the API.');
+    </script>
+</body>
+</html>
