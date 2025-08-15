@@ -118,3 +118,14 @@ supabase/.temp
 TEST_CREDENTIALS.md
 *.docx
 ~$*
+
+# OCR Models and Large Files
+# Exclude dots.ocr directory containing large AI models
+dots.ocr/
+*.bin
+*.safetensors
+*.onnx
+*.pt
+*.pth
+*.model
+*.weights

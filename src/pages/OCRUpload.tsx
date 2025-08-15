@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import {
   Box,
   Typography,
@@ -36,7 +36,8 @@ import {
   ListItemIcon,
   Fab,
   Chip,
-  Divider
+  Divider,
+  LinearProgress
 } from '@mui/material'
 import { 
   CloudUpload, 
@@ -47,6 +48,7 @@ import {
   Visibility, 
   Save, 
   ArrowForward, 
+  ArrowBack,
   CompareArrows,
   SmartToy,
   FolderOpen,
@@ -54,7 +56,12 @@ import {
   Analytics,
   Storage,
   Close,
-  PictureAsPdf
+  PictureAsPdf,
+  Business,
+  AccountBalance,
+  AttachMoney,
+  List as ListIcon,
+  Warning
 } from '@mui/icons-material'
 import { motion, AnimatePresence } from 'framer-motion'
 import { formatCurrency } from '../utils/formatUtils'
@@ -66,7 +73,10 @@ import ConfidenceIndicator from '../components/ConfidenceIndicator'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { useOCRStore } from '../store/ocrStore'
 import { useOCRQuery } from '../hooks/useOCRQuery'
+import { useAuth } from '../context/AuthContext'
 import { OCRResult } from '../services/ocrService'
+import { initializeMistralAi } from '../services/mistralAiService'
+import { mistralAiConfig, validateMistralConfig } from '../config/mistralAiConfig'
 
 const OCRUpload: React.FC = () => {
   // Use the OCR store for state management
@@ -84,6 +94,8 @@ const OCRUpload: React.FC = () => {
     setUploadMethod,
     setShowPreviewDialog,
     setShowConfirmDialog,
+    setOriginalResult,
+    setEditedResult,
     updateField,
     updateItem,
     deleteItem,
@@ -103,11 +115,16 @@ const OCRUpload: React.FC = () => {
     error: queryError,
   } = useOCRQuery()
 
+  // Get authentication context
+  const { user, isLoading: authLoading } = useAuth()
+
   // Local state for file upload
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [manualText, setManualText] = useState('')  
   const [showSideBySide, setShowSideBySide] = useState(false)
+  const [selectedOcrService, setSelectedOcrService] = useState<'mistral' | 'dots'>('mistral')
+
 
   // New state for AI PDF browsing
   const [showPdfBrowser, setShowPdfBrowser] = useState(false)
@@ -118,6 +135,12 @@ const OCRUpload: React.FC = () => {
   const [isAiProcessing, setIsAiProcessing] = useState(false)
   const [aiProgress, setAiProgress] = useState(0)
   const [showDatabaseSaveDialog, setShowDatabaseSaveDialog] = useState(false)
+  
+  // Timer states
+  const [processingStartTime, setProcessingStartTime] = useState<number | null>(null)
+  const [elapsedTime, setElapsedTime] = useState(0)
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null)
+  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null)
 
   // Combine errors from store and query
   const errorMessage = storeError || (queryError instanceof Error ? queryError.message : null)
@@ -125,6 +148,162 @@ const OCRUpload: React.FC = () => {
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
+  
+  // Timer utility functions
+  const startTimer = () => {
+    const startTime = Date.now()
+    setProcessingStartTime(startTime)
+    setElapsedTime(0)
+    
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000)
+      setElapsedTime(elapsed)
+      
+      // Calculate estimated time remaining based on progress
+       const currentProgress = isAiProcessing ? aiProgress : progress
+       if (currentProgress > 0 && currentProgress < 100) {
+         const estimatedTotal = (elapsed / currentProgress) * 100
+         const remaining = Math.max(0, estimatedTotal - elapsed)
+         setEstimatedTimeRemaining(remaining)
+       }
+    }, 1000)
+    
+    setTimerInterval(interval)
+  }
+  
+  const stopTimer = () => {
+    if (timerInterval) {
+      clearInterval(timerInterval)
+      setTimerInterval(null)
+    }
+    setProcessingStartTime(null)
+    setElapsedTime(0)
+    setEstimatedTimeRemaining(null)
+  }
+  
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+   }
+   
+   // Cleanup timer on component unmount
+   useEffect(() => {
+     return () => {
+       if (timerInterval) {
+         clearInterval(timerInterval)
+       }
+     }
+   }, [timerInterval])
+   
+   // Initialize MistralAI service on component mount
+   useEffect(() => {
+     const initMistralAi = async () => {
+       try {
+         // Check if MistralAI API key is available in environment
+         const apiKey = import.meta.env.VITE_MISTRAL_API_KEY
+         if (apiKey) {
+           console.log('🤖 Initializing MistralAI service...')
+           await initializeMistralAi({
+           apiKey,
+           baseUrl: mistralAiConfig.apiEndpoint,
+           model: mistralAiConfig.model,
+           timeout: mistralAiConfig.timeout
+         })
+           console.log('✅ MistralAI service initialized successfully')
+         } else {
+           console.log('⚠️ MistralAI API key not found, using dots.ocr as fallback')
+         }
+       } catch (error) {
+         console.error('❌ Failed to initialize MistralAI:', error)
+       }
+     }
+     
+     initMistralAi()
+   }, [])
+    
+  // Timer display component
+  const renderProcessingTimer = () => {
+    if ((!isAiProcessing && !isProcessing) || !processingStartTime) return null
+    
+    return (
+      <Paper 
+        elevation={2} 
+        sx={{ 
+          p: 2, 
+          mb: 2, 
+          background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
+          color: 'white'
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+           <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
+             <SmartToy sx={{ mr: 1 }} />
+             {isAiProcessing ? 'AI Processing in Progress' : 'OCR Processing in Progress'}
+           </Typography>
+           <Chip 
+             label={`${isAiProcessing ? aiProgress : progress}%`} 
+             size="small" 
+             sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }}
+           />
+        </Box>
+        
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="body2" sx={{ opacity: 0.9 }}>Elapsed Time</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 'bold', fontFamily: 'monospace' }}>
+              {formatTime(elapsedTime)}
+            </Typography>
+          </Box>
+          
+          {estimatedTimeRemaining !== null && (isAiProcessing ? aiProgress : progress) > 10 && (
+             <Box sx={{ textAlign: 'center' }}>
+               <Typography variant="body2" sx={{ opacity: 0.9 }}>Est. Remaining</Typography>
+               <Typography variant="h5" sx={{ fontWeight: 'bold', fontFamily: 'monospace' }}>
+                 {formatTime(Math.floor(estimatedTimeRemaining))}
+               </Typography>
+             </Box>
+           )}
+          
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="body2" sx={{ opacity: 0.9 }}>Current Stage</Typography>
+            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+              {isAiProcessing ? (
+                stage || (
+                  aiProgress < 30 ? 'Analyzing document structure...' :
+                  aiProgress < 60 ? 'Extracting text content...' :
+                  aiProgress < 90 ? 'Processing with AI...' : 'Finalizing results...'
+                )
+              ) : (
+                progress < 30 ? 'Initializing OCR...' :
+                progress < 60 ? 'Reading document...' :
+                progress < 90 ? 'Extracting text...' : 'Finalizing results...'
+              )}
+            </Typography>
+          </Box>
+        </Box>
+        
+        <Box sx={{ width: '100%' }}>
+          <LinearProgress 
+            variant="determinate" 
+            value={isAiProcessing ? aiProgress : progress} 
+            sx={{ 
+              height: 8, 
+              borderRadius: 4,
+              bgcolor: 'rgba(255,255,255,0.2)',
+              '& .MuiLinearProgress-bar': {
+                bgcolor: 'white'
+              }
+            }} 
+          />
+        </Box>
+        
+        <Typography variant="body2" sx={{ mt: 1, opacity: 0.8, textAlign: 'center' }}>
+          ⏱️ Processing may take up to 20 minutes. Please keep this tab open.
+        </Typography>
+      </Paper>
+    )
+  }
 
   // New AI PDF processing functions
   const handlePdfBrowse = () => {
@@ -141,17 +320,21 @@ const OCRUpload: React.FC = () => {
   }
 
   const processAiInvoice = async (file: File) => {
+    if (!user) {
+      setError('Please log in to process invoices with AI.')
+      return
+    }
+    
     setIsAiProcessing(true)
     setAiProgress(0)
+    startTimer() // Start the processing timer
     
     try {
-      // Simulate AI processing with enhanced progress tracking
+      // Enhanced progress tracking with DotsOCR processing info
       const stages = [
-        { name: 'Uploading PDF', progress: 20 },
-        { name: 'AI Text Extraction', progress: 40 },
-        { name: 'Invoice Data Recognition', progress: 60 },
-        { name: 'Data Validation', progress: 80 },
-        { name: 'Database Preparation', progress: 100 }
+        { name: 'Uploading PDF', progress: 10 },
+        { name: 'Preparing for DotsOCR Processing', progress: 20 },
+        { name: 'DotsOCR AI Processing (This may take up to 5 minutes)', progress: 30 },
       ]
 
       for (const stage of stages) {
@@ -159,9 +342,41 @@ const OCRUpload: React.FC = () => {
         setAiProgress(stage.progress)
         await new Promise(resolve => setTimeout(resolve, 1000))
       }
+      
+      // Show processing message
+      setStage('DotsOCR AI Processing (Please wait, this may take up to 5 minutes)' as any)
+      setAiProgress(50)
 
-      // Process the PDF using existing OCR service
-      const result = await processPdf(file)
+      // Process the PDF using selected OCR service
+      const result = await processPdf({ file, preferredService: selectedOcrService })
+      
+      // Check if the result came from simulation mode
+      const isSimulationMode = result.metadata?.processingMode === 'simulation' || 
+                              result.data?.confidence?.aiProcessing === undefined
+      
+      if (isSimulationMode) {
+        // Show simulation mode notification
+        setStage('⚠️ Using Simulation Mode - Backend OCR Service Unavailable' as any)
+        setAiProgress(75)
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        
+        // Add simulation indicator to the result
+        result.simulationMode = true
+        result.metadata = {
+          ...result.metadata,
+          processingMode: 'simulation',
+          notice: 'This result was generated using simulation data due to backend service unavailability'
+        }
+      }
+      
+      // Show completion stages
+      setStage('Processing Complete - Preparing Results' as any)
+      setAiProgress(90)
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      setStage('Finalizing Data' as any)
+      setAiProgress(100)
+      await new Promise(resolve => setTimeout(resolve, 500))
       
       // Enhanced result with AI-specific metadata
       const enhancedResult = {
@@ -176,9 +391,16 @@ const OCRUpload: React.FC = () => {
           fileName: file.name,
           fileSize: file.size,
           processedAt: new Date().toISOString(),
-          aiModel: 'Invoice-AI-v2.1'
+          aiModel: 'DotsOCR-v1.0'
         }
       }
+
+      // Store the enhanced result in the OCR store using the already available methods
+      console.log('🔍 Setting OCR results:', enhancedResult)
+      setOriginalResult(enhancedResult)
+      setEditedResult(enhancedResult)
+      
+      setActiveStep(1) // Move to edit step to show the extracted data
 
       return enhancedResult
     } catch (error) {
@@ -186,6 +408,7 @@ const OCRUpload: React.FC = () => {
       throw error
     } finally {
       setIsAiProcessing(false)
+      stopTimer() // Stop the processing timer
     }
   }
 
@@ -246,6 +469,11 @@ const OCRUpload: React.FC = () => {
     const selectedFile = event.target.files?.[0]
     if (!selectedFile) return
 
+    if (!user) {
+      setError('Please log in to process invoices.')
+      return
+    }
+
     setFile(selectedFile)
     
     // Create a preview URL for images
@@ -264,6 +492,11 @@ const OCRUpload: React.FC = () => {
   const handleCameraCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
     const capturedFile = event.target.files?.[0]
     if (!capturedFile) return
+
+    if (!user) {
+      setError('Please log in to process invoices.')
+      return
+    }
 
     setFile(capturedFile)
     
@@ -287,18 +520,24 @@ const OCRUpload: React.FC = () => {
 
     // Clear any previous errors
     setError(null)
+    
+    // Start timer for regular OCR processing
+    startTimer()
 
     try {
       if (uploadMethod === 'text') {
         await processText(manualText)
       } else if (file?.type.includes('pdf')) {
-        await processPdf(file)
+        await processPdf({ file, preferredService: selectedOcrService, useFullModel: true })
       } else {
-        await processImage(file!)
+        await processImage({ file: file!, preferredService: selectedOcrService, useFullModel: true })
       }
     } catch (error) {
       console.error('OCR processing error:', error)
       setError(error instanceof Error ? error.message : 'An unknown error occurred during processing')
+    } finally {
+      // Stop timer when processing completes
+      stopTimer()
     }
   }
 
@@ -371,9 +610,18 @@ const OCRUpload: React.FC = () => {
       </AppBar>
       
       <Box sx={{ p: 3 }}>
-        <Alert severity="info" sx={{ mb: 3 }}>
+        <Alert severity="info" sx={{ mb: 2 }}>
           <Typography variant="body2">
             AI-powered invoice processing with automatic data extraction and Supabase integration.
+          </Typography>
+        </Alert>
+        
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+            ⏱️ Processing Time Notice
+          </Typography>
+          <Typography variant="body2">
+            DotsOCR processing may take up to 20 minutes per document. Please be patient and do not close the browser during processing.
           </Typography>
         </Alert>
 
@@ -553,6 +801,85 @@ const OCRUpload: React.FC = () => {
       </DialogActions>
     </Dialog>
   )
+
+  // OCR Service Selector
+  const renderServiceSelector = () => {
+    if (uploadMethod) return null
+
+    return (
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <SmartToy /> Choose OCR Service
+        </Typography>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} sm={6}>
+            <Card 
+              sx={{ 
+                cursor: 'pointer',
+                border: selectedOcrService === 'mistral' ? '2px solid' : '1px solid',
+                borderColor: selectedOcrService === 'mistral' ? 'primary.main' : 'divider',
+                background: selectedOcrService === 'mistral' ? 'primary.light' : 'background.paper',
+                '&:hover': { boxShadow: 4 }
+              }}
+              onClick={() => setSelectedOcrService('mistral')}
+            >
+              <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                <SmartToy sx={{ 
+                  fontSize: 40, 
+                  color: selectedOcrService === 'mistral' ? 'primary.main' : 'text.secondary',
+                  mb: 1 
+                }} />
+                <Typography variant="h6" gutterBottom>
+                  MistralAI (Recommended)
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Fast & accurate AI processing
+                </Typography>
+                <Chip 
+                  label={validateMistralConfig() ? 'Available' : 'API Key Required'} 
+                  color={validateMistralConfig() ? 'success' : 'warning'}
+                  size="small"
+                  sx={{ mt: 1 }}
+                />
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Card 
+              sx={{ 
+                cursor: 'pointer',
+                border: selectedOcrService === 'dots' ? '2px solid' : '1px solid',
+                borderColor: selectedOcrService === 'dots' ? 'primary.main' : 'divider',
+                background: selectedOcrService === 'dots' ? 'primary.light' : 'background.paper',
+                '&:hover': { boxShadow: 4 }
+              }}
+              onClick={() => setSelectedOcrService('dots')}
+            >
+              <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                <AutoAwesome sx={{ 
+                  fontSize: 40, 
+                  color: selectedOcrService === 'dots' ? 'primary.main' : 'text.secondary',
+                  mb: 1 
+                }} />
+                <Typography variant="h6" gutterBottom>
+                  Dots.OCR
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Traditional OCR processing
+                </Typography>
+                <Chip 
+                  label="45 min timeout" 
+                  color="info"
+                  size="small"
+                  sx={{ mt: 1 }}
+                />
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      </Box>
+    )
+  }
 
   // Enhanced upload method selection with AI option
   const renderUploadMethodSelection = () => {
@@ -778,6 +1105,34 @@ const OCRUpload: React.FC = () => {
           </motion.div>
         </AnimatePresence>
 
+        {/* Processing Info */}
+        {uploadMethod && (
+          <Box sx={{ mt: 2, mb: 2 }}>
+            <Alert severity="info" sx={{ mt: 1 }}>
+              {validateMistralConfig() ? (
+                <>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <SmartToy fontSize="small" />
+                    MistralAI Document Processing (Fast & Accurate)
+                  </Typography>
+                  <Typography variant="body2">
+                    Using MistralAI for intelligent document analysis. Faster processing with high accuracy for invoices, POs, PRs, and accounting queries.
+                  </Typography>
+                </>
+              ) : (
+                <>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                    Full Model OCR Processing (45 minute timeout)
+                  </Typography>
+                  <Typography variant="body2">
+                    Using advanced AI model for maximum accuracy. Processing may take up to 45 minutes for complex documents.
+                  </Typography>
+                </>
+              )}
+            </Alert>
+          </Box>
+        )}
+
         <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
           <Button
             variant="outlined"
@@ -809,79 +1164,356 @@ const OCRUpload: React.FC = () => {
     )
   }
 
-  // Render review and edit interface (simplified for brevity)
+  // Render comprehensive review and edit interface
   const renderReviewInterface = () => {
-    if (!editedResult || !editedResult.data) return null
+    if (!editedResult || !editedResult.data) {
+      return null
+    }
+
+    const data = editedResult.data
+    const isSimulationMode = editedResult.simulationMode || editedResult.metadata?.processingMode === 'simulation'
 
     return (
       <Box sx={{ mt: 3 }}>
-        <Paper variant="outlined" sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Extracted Information
+        {/* Simulation Mode Alert */}
+        {isSimulationMode && (
+          <Alert 
+            severity="warning" 
+            sx={{ mb: 3 }}
+            icon={<Warning />}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+              ⚠️ Simulation Mode Active
+            </Typography>
+            <Typography variant="body2">
+              The OCR backend service is currently unavailable. This data was generated using simulation mode for demonstration purposes. 
+              Please verify all information before saving.
+            </Typography>
+          </Alert>
+        )}
+        {/* Supplier Information Section */}
+        <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Business /> Supplier Information
           </Typography>
           
           <Grid container spacing={3}>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} md={6}>
               <TextField
-                label="Vendor"
+                label="Supplier Name"
                 fullWidth
-                value={editedResult.data.vendor || ''}
-                onChange={(e) => handleEditField('vendor', e.target.value)}
+                value={data.supplier_name || data.vendor || ''}
+                onChange={(e) => handleEditField('supplier_name', e.target.value)}
                 margin="normal"
                 size="small"
+                variant="outlined"
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} md={6}>
               <TextField
-                label="Date"
+                label="Supplier Email"
                 fullWidth
-                value={editedResult.data.date || ''}
-                onChange={(e) => handleEditField('date', e.target.value)}
+                value={data.supplier_email || ''}
+                onChange={(e) => handleEditField('supplier_email', e.target.value)}
                 margin="normal"
                 size="small"
-                placeholder="YYYY-MM-DD"
+                variant="outlined"
+                type="email"
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12}>
               <TextField
-                label="Invoice Number"
+                label="Supplier Address"
                 fullWidth
-                value={editedResult.data.invoiceNumber || ''}
-                onChange={(e) => handleEditField('invoiceNumber', e.target.value)}
+                multiline
+                rows={2}
+                value={data.supplier_address || ''}
+                onChange={(e) => handleEditField('supplier_address', e.target.value)}
                 margin="normal"
                 size="small"
+                variant="outlined"
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12}>
               <TextField
-                label="Total Amount"
+                label="Bank Details"
                 fullWidth
-                value={editedResult.data.total || ''}
-                onChange={(e) => handleEditField('total', parseFloat(e.target.value) || 0)}
+                multiline
+                rows={2}
+                value={data.supplier_bank_details || ''}
+                onChange={(e) => handleEditField('supplier_bank_details', e.target.value)}
                 margin="normal"
                 size="small"
-                type="number"
+                variant="outlined"
               />
             </Grid>
           </Grid>
-
-          <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
-            <Button
-              variant="outlined"
-              onClick={() => setActiveStep(0)}
-            >
-              Back
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleReview}
-              endIcon={<ArrowForward />}
-            >
-              Continue to Review
-            </Button>
-          </Box>
         </Paper>
+
+        {/* Document Information Section */}
+        <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Description /> Document Information
+          </Typography>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField
+                label="Document Title"
+                fullWidth
+                value={data.document_title || 'Invoice'}
+                onChange={(e) => handleEditField('document_title', e.target.value)}
+                margin="normal"
+                size="small"
+                variant="outlined"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField
+                label="Invoice Number"
+                fullWidth
+                value={data.invoice_number || data.invoiceNumber || ''}
+                onChange={(e) => handleEditField('invoice_number', e.target.value)}
+                margin="normal"
+                size="small"
+                variant="outlined"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField
+                label="Date (DD-MM-YYYY)"
+                fullWidth
+                value={data.date || ''}
+                onChange={(e) => handleEditField('date', e.target.value)}
+                margin="normal"
+                size="small"
+                variant="outlined"
+                placeholder="DD-MM-YYYY"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Work Order Number"
+                fullWidth
+                value={data.work_order_number || data.metadata?.workOrderNumber || ''}
+                onChange={(e) => handleEditField('work_order_number', e.target.value)}
+                margin="normal"
+                size="small"
+                variant="outlined"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Purchase Order Number"
+                fullWidth
+                value={data.purchase_order_number || ''}
+                onChange={(e) => handleEditField('purchase_order_number', e.target.value)}
+                margin="normal"
+                size="small"
+                variant="outlined"
+              />
+            </Grid>
+          </Grid>
+        </Paper>
+
+        {/* NEPCS Company Information Section */}
+        <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AccountBalance /> NEPCS Company Information
+          </Typography>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="NEPCS Company Name"
+                fullWidth
+                value={data.nepcs_company_name || 'China Northeast Electric Power Engineering & Services Co., Ltd.'}
+                onChange={(e) => handleEditField('nepcs_company_name', e.target.value)}
+                margin="normal"
+                size="small"
+                variant="outlined"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Project Name"
+                fullWidth
+                value={data.project_name || ''}
+                onChange={(e) => handleEditField('project_name', e.target.value)}
+                margin="normal"
+                size="small"
+                variant="outlined"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="NEPCS Address"
+                fullWidth
+                multiline
+                rows={2}
+                value={data.nepcs_address || ''}
+                onChange={(e) => handleEditField('nepcs_address', e.target.value)}
+                margin="normal"
+                size="small"
+                variant="outlined"
+              />
+            </Grid>
+          </Grid>
+        </Paper>
+
+        {/* Financial Information Section */}
+        <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AttachMoney /> Financial Information
+          </Typography>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                label="Subtotal"
+                fullWidth
+                value={data.subtotal || 0}
+                onChange={(e) => handleEditField('subtotal', parseFloat(e.target.value) || 0)}
+                margin="normal"
+                size="small"
+                variant="outlined"
+                type="number"
+                InputProps={{
+                  startAdornment: <span style={{ marginRight: 8 }}>{data.currency || 'USD'}</span>
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                label="Tax Amount"
+                fullWidth
+                value={data.tax_amount || 0}
+                onChange={(e) => handleEditField('tax_amount', parseFloat(e.target.value) || 0)}
+                margin="normal"
+                size="small"
+                variant="outlined"
+                type="number"
+                InputProps={{
+                  startAdornment: <span style={{ marginRight: 8 }}>{data.currency || 'USD'}</span>
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                label="VAT Amount"
+                fullWidth
+                value={data.vat_amount || 0}
+                onChange={(e) => handleEditField('vat_amount', parseFloat(e.target.value) || 0)}
+                margin="normal"
+                size="small"
+                variant="outlined"
+                type="number"
+                InputProps={{
+                  startAdornment: <span style={{ marginRight: 8 }}>{data.currency || 'USD'}</span>
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                label="Total Amount"
+                fullWidth
+                value={data.total_amount || data.total || 0}
+                onChange={(e) => handleEditField('total_amount', parseFloat(e.target.value) || 0)}
+                margin="normal"
+                size="small"
+                variant="outlined"
+                type="number"
+                InputProps={{
+                  startAdornment: <span style={{ marginRight: 8, fontWeight: 'bold' }}>{data.currency || 'USD'}</span>
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: 'primary.main',
+                      borderWidth: 2
+                    }
+                  }
+                }}
+              />
+            </Grid>
+          </Grid>
+        </Paper>
+
+        {/* Items Table Section */}
+        {data.items && data.items.length > 0 && (
+          <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" gutterBottom color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <ListIcon /> Itemized List
+            </Typography>
+            
+            <Box sx={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f5f5f5' }}>
+                    <th style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'left' }}>Sl. No.</th>
+                    <th style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'left' }}>Item Name</th>
+                    <th style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'center' }}>Quantity</th>
+                    <th style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'right' }}>Unit Price</th>
+                    <th style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'right' }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.items.map((item, index) => (
+                    <tr key={index}>
+                      <td style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'center' }}>{item.sl_no || index + 1}</td>
+                      <td style={{ padding: '12px', border: '1px solid #ddd' }}>{item.name || ''}</td>
+                      <td style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'center' }}>{item.quantity || 0}</td>
+                      <td style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'right' }}>{data.currency} {item.unit_price || 0}</td>
+                      <td style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'right' }}>{data.currency} {item.amount || 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Box>
+          </Paper>
+        )}
+
+        {/* Confidence Scores */}
+        {data.confidence && (
+          <Paper variant="outlined" sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
+            <Typography variant="h6" gutterBottom color="primary">
+              Extraction Confidence Scores
+            </Typography>
+            <Grid container spacing={2}>
+              {Object.entries(data.confidence).map(([key, value]) => (
+                <Grid item xs={6} sm={4} md={3} key={key}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="body2" color="textSecondary">
+                      {key.replace('_', ' ').toUpperCase()}
+                    </Typography>
+                    <Typography variant="h6" color={value > 80 ? 'success.main' : value > 60 ? 'warning.main' : 'error.main'}>
+                      {value}%
+                    </Typography>
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
+          </Paper>
+        )}
+
+        <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
+          <Button
+            variant="outlined"
+            onClick={() => setActiveStep(0)}
+            startIcon={<ArrowBack />}
+          >
+            Back
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleReview}
+            endIcon={<ArrowForward />}
+            size="large"
+          >
+            Continue to Review
+          </Button>
+        </Box>
       </Box>
     )
   }
@@ -946,6 +1578,11 @@ const OCRUpload: React.FC = () => {
       <Typography variant="body1" color="textSecondary" paragraph>
         Upload receipts, invoices, or other financial documents to automatically extract and process the information.
       </Typography>
+      {!user && (
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          Please log in to process invoices and save transactions to your account.
+        </Alert>
+      )}
 
       <Paper sx={{ p: 3, borderRadius: 2, mb: 3 }}>
         <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
@@ -960,14 +1597,23 @@ const OCRUpload: React.FC = () => {
           </Step>
         </Stepper>
 
+        {/* Processing Timer Display */}
+        {renderProcessingTimer()}
+
         {activeStep === 0 && (
           <>
+            {renderServiceSelector()}
             {renderUploadMethodSelection()}
             {renderUploadInterface()}
           </>
         )}
 
-        {activeStep === 1 && renderReviewInterface()}
+        {activeStep === 1 && (
+          <>
+    
+            {renderReviewInterface()}
+          </>
+        )}
 
         {activeStep === 2 && renderFinalReview()}
       </Paper>

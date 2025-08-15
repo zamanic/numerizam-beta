@@ -1,6 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
 import { ocrService, OCRResult } from '../services/ocrService';
 import { useOCRStore } from '../store/ocrStore';
+import { supabaseAccountingService } from '../services/supabaseAccountingService';
+import { useAuth } from '../context/AuthContext';
 
 // Hook for OCR operations using React Query
 export const useOCRQuery = () => {
@@ -14,10 +16,13 @@ export const useOCRQuery = () => {
     setSavedTransaction,
     setActiveStep,
   } = useOCRStore();
+  
+  // Get authentication context
+  const { user } = useAuth();
 
   // Mutation for processing an image
   const processImageMutation = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async ({ file, preferredService = 'mistral', useFullModel = false }: { file: File; preferredService?: 'mistral' | 'dots'; useFullModel?: boolean }) => {
       // Start processing
       setStage('upload');
       setProgress(0);
@@ -37,7 +42,10 @@ export const useOCRQuery = () => {
       
       // Process the image
       try {
-        const result = await ocrService.processImage(file);
+        const result = await ocrService.processImage(file, preferredService, useFullModel).catch((error) => {
+          console.error('OCR processing error caught:', error);
+          throw error;
+        });
         
         // Clear the upload interval
         clearInterval(uploadInterval);
@@ -68,7 +76,7 @@ export const useOCRQuery = () => {
   
   // Mutation for processing a PDF
   const processPdfMutation = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async ({ file, preferredService = 'mistral', useFullModel = false }: { file: File; preferredService?: 'mistral' | 'dots'; useFullModel?: boolean }) => {
       // Start processing
       setStage('upload');
       setProgress(0);
@@ -88,7 +96,7 @@ export const useOCRQuery = () => {
       
       // Process the PDF
       try {
-        const result = await ocrService.processPdf(file);
+        const result = await ocrService.processPdf(file, preferredService, useFullModel);
         
         // Clear the upload interval
         clearInterval(uploadInterval);
@@ -150,28 +158,37 @@ export const useOCRQuery = () => {
     },
   });
   
-  // Mutation for validating and saving the result
+  // Mutation for validating and saving the result to database with authentication
   const saveResultMutation = useMutation({
     mutationFn: async (result: OCRResult) => {
+      if (!user) {
+        throw new Error('Authentication required to save transactions');
+      }
+      
       // Start saving
       setStage('complete');
       setProgress(90);
       setError(null);
       
-      // Validate the result
-      const validatedResult = await ocrService.validateResult(result);
-      
-      // Convert to transaction
-      const transaction = await ocrService.convertToTransaction(validatedResult);
-      
-      // For now, just return the transaction without saving to database
-      // In a real implementation, you would use supabaseAccountingService.saveTransactionData
-      // const saveResult = await supabaseAccountingService.saveTransactionData('user-id', transaction);
-      
-      // Complete the process
-      setProgress(100);
-      
-      return transaction;
+      try {
+        // Validate the result
+        const validatedResult = await ocrService.validateResult(result);
+        
+        // Convert to transaction
+        const transaction = await ocrService.convertToTransaction(validatedResult);
+        
+        // Save to database with authentication
+        const saveResult = await supabaseAccountingService.saveTransactionData(user.id, transaction);
+        
+        // Complete the process
+        setProgress(100);
+        
+        return saveResult;
+      } catch (error) {
+        setStage('error');
+        setError(error instanceof Error ? error.message : 'Failed to save transaction');
+        throw error;
+      }
     },
     onSuccess: (transaction) => {
       // Set the saved transaction
@@ -213,17 +230,17 @@ export const useOCRQuery = () => {
   };
   
   return {
-    processImage: (file: File) => {
+    processImage: ({ file, preferredService = 'mistral', useFullModel = false }: { file: File; preferredService?: 'mistral' | 'dots'; useFullModel?: boolean }) => {
       return new Promise<OCRResult>((resolve, reject) => {
-        processImageMutation.mutate(file, {
+        processImageMutation.mutate({ file, preferredService, useFullModel }, {
           onSuccess: (result) => resolve(result),
           onError: (error) => reject(error)
         });
       });
     },
-    processPdf: (file: File) => {
+    processPdf: ({ file, preferredService = 'mistral', useFullModel = false }: { file: File; preferredService?: 'mistral' | 'dots'; useFullModel?: boolean }) => {
       return new Promise<OCRResult>((resolve, reject) => {
-        processPdfMutation.mutate(file, {
+        processPdfMutation.mutate({ file, preferredService, useFullModel }, {
           onSuccess: (result) => resolve(result),
           onError: (error) => reject(error)
         });
